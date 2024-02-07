@@ -14,6 +14,8 @@
 data/etc/storage.json
 data/etc/sqlite.json
 data/etc/sqlitelb.json
+data/etc/postgres.json
+data/storage/postgres/pgsql
 data/etc/certs/*
 data/var
 data/support
