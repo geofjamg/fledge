@@ -11,6 +11,7 @@
 #include <iostream>
 #include <map>
 #include <fstream>
+#include <iomanip>
 #include <string>
 #include <logger.h>
 #include <plugin_exception.h>
@@ -18,66 +19,13 @@
 #include <stdarg.h>
 #include <mutex>
 #include <thread>
+#include <unistd.h>
+#include <utility>
 
 using namespace std;
 using namespace rapidjson;
 
 #define LEN_BUFFER_DATE 100
-
-/**
- * The memory plugin interface
- */
-extern "C" {
-
-const char *default_config = QUOTE({
-});
-
-/**
- * The plugin information structure
- */
-static PLUGIN_INFORMATION info = {
-	"Memory",		// Name
-	"1.0.0",		// Version
-	SP_READINGS,		// Flags
-	PLUGIN_TYPE_STORAGE,	// Type
-	"1.6.0",		// Interface version
-	default_config
-};
-
-/**
- * Return the information about this plugin
- */
-PLUGIN_INFORMATION *plugin_info()
-{
-	return &info;
-}
-
-class MemoryContext {
-public:
-	void updateReading(const string& assetCode, const string& reading);
-
-private:
-	std::mutex _mutex;
-	map<string, string> _readingByAssetCode;
-};
-
-void MemoryContext::updateReading(const string& assetCode, const string& reading) {
-	std::lock_guard<std::mutex> lk(_mutex);
-	_readingByAssetCode[assetCode] = reading;
-}
-
-/**
- * Initialise the plugin, called to get the plugin handle
- * In the case of SQLLite we also get a pool of connections
- * to use.
- *
- * @param category	The plugin configuration category
- */
-PLUGIN_HANDLE plugin_init(ConfigCategory *category)
-{
-	Logger::getLogger()->debug("MEMORY plugin_init");
-	return new MemoryContext();
-}
 
 /**
  * String escape routine
@@ -212,6 +160,111 @@ bool formatDate(char *formatted_date, size_t buffer_size, const char *date) {
 }
 
 /**
+ * The memory plugin interface
+ */
+extern "C" {
+
+const char *default_config = QUOTE({
+});
+
+/**
+ * The plugin information structure
+ */
+static PLUGIN_INFORMATION info = {
+	"Memory",		// Name
+	"1.0.0",		// Version
+	SP_READINGS,		// Flags
+	PLUGIN_TYPE_STORAGE,	// Type
+	"1.6.0",		// Interface version
+	default_config
+};
+
+/**
+ * Return the information about this plugin
+ */
+PLUGIN_INFORMATION *plugin_info()
+{
+	return &info;
+}
+
+struct Reading {
+	string _assetCode;
+	string _userTs;
+	string _ts;
+	string _json;
+
+	Reading(string assetCode, string userTs, string ts, string json)
+		: _assetCode(std::move(assetCode)),
+		  _userTs(std::move(userTs)),
+		  _ts(std::move(ts)),
+		  _json(std::move(json)) {
+	}
+};
+
+class MemoryContext {
+public:
+	MemoryContext()
+		: _readingMinId(0) {
+	}
+
+	void addReading(const string& assetCode, const string& userTs, const string& json);
+	bool purgeReadings(int param);
+	vector<Reading> fetchReadings(unsigned long id, unsigned int blksize);
+
+private:
+	std::mutex _mutex;
+	unsigned long _readingMinId;
+	vector<Reading> _readings;
+};
+
+void MemoryContext::addReading(const string& assetCode, const string& userTs, const string& json) {
+	std::lock_guard<std::mutex> lk(_mutex);
+	// add current date time
+	auto now = std::chrono::system_clock::now();
+	auto in_time_t = std::chrono::system_clock::to_time_t(now);
+	std::stringstream ts;
+	ts << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %H:%M:%f");
+	_readings.emplace_back(assetCode, userTs, ts.str(), json);
+}
+
+bool MemoryContext::purgeReadings(int param) {
+	std::lock_guard<std::mutex> lk(_mutex);
+	if (_readings.size() > param) {
+		_readings.erase(_readings.begin(), _readings.begin() + param);
+		_readingMinId += param;
+		Logger::getLogger()->debug("%d reading have been purged, %d remains", param, _readings.size());
+		return true;
+	}
+	return false;
+}
+
+vector<Reading> MemoryContext::fetchReadings(unsigned long id, unsigned int blksize) {
+	std::lock_guard<std::mutex> lk(_mutex);
+	if (id >= _readingMinId && id <= _readingMinId + _readings.size()) {
+		unsigned int size = std::min((unsigned int) _readings.size(), blksize);
+		auto first = _readings.cbegin() + id - _readingMinId;
+		auto last = first + size;
+		return {first, last};
+	}
+	Logger::getLogger()->error("Asking for readings fetch out of available window: id=%d, blksize=%d, readingMinId=%d, readingsSize=%d",
+			id, blksize, _readingMinId, _readings.size());
+	return {};
+}
+
+/**
+ * Initialise the plugin, called to get the plugin handle
+ * In the case of SQLLite we also get a pool of connections
+ * to use.
+ *
+ * @param category	The plugin configuration category
+ */
+PLUGIN_HANDLE plugin_init(ConfigCategory *category)
+{
+	Logger::getLogger()->debug("MEMORY plugin_init");
+	return new MemoryContext();
+}
+
+/**
  * Append a sequence of readings to the readings buffer
  */
 int plugin_reading_append(PLUGIN_HANDLE handle, char *readings)
@@ -259,6 +312,7 @@ int plugin_reading_append(PLUGIN_HANDLE handle, char *readings)
 		if (strlen(assetCode) == 0)
 		{
 			Logger::getLogger()->warn("Empty asset code value, row ignored.");
+			continue;
 		}
 
 		// Handles - user_ts
@@ -274,9 +328,9 @@ int plugin_reading_append(PLUGIN_HANDLE handle, char *readings)
 		StringBuffer buffer;
 		Writer<StringBuffer> writer(buffer);
 		readingValue["reading"].Accept(writer);
-		const string reading = escape(buffer.GetString());
+		const string json = escape(buffer.GetString());
 
-		context->updateReading(assetCode, reading);
+		context->addReading(assetCode, user_ts, json);
 		updateAssetCount++;
 	}
 	Logger::getLogger()->info("%d assets have been updated", updateAssetCount);
@@ -297,11 +351,39 @@ int plugin_readingStream(PLUGIN_HANDLE handle, ReadingStream **readings, bool co
 /**
  * Fetch a block of readings from the readings buffer
  */
-char *plugin_reading_fetch(PLUGIN_HANDLE handle, unsigned long id, unsigned int blksize)
-{
+char *plugin_reading_fetch(PLUGIN_HANDLE handle, unsigned long id, unsigned int blksize) {
 	Logger::getLogger()->debug("MEMORY plugin_reading_fetch %d %d", id, blksize);
-	// TODO
-	return strdup("");
+
+	auto context = static_cast<MemoryContext *>(handle);
+	vector<Reading> readings = context->fetchReadings(id, blksize);
+
+	Document doc;
+
+	doc.SetObject();
+
+	// Get document allocator
+	Document::AllocatorType& allocator = doc.GetAllocator();
+
+	// Create the array for returned rows
+	Value rows(kArrayType);
+
+	// Rows counter, set it to 0 now
+	Value count;
+	count.SetInt(0);
+
+	// Add 'rows' and 'count' to the final JSON document
+	doc.AddMember("count", count, allocator);
+	doc.AddMember("rows", rows, allocator);
+
+	/* Write out the JSON document we created */
+	StringBuffer buffer;
+	Writer<StringBuffer> writer(buffer);
+	doc.Accept(writer);
+
+	// Set the result as a CPP string
+	char* json = (char *) buffer.GetString();
+	Logger::getLogger()->debug("MEMORY plugin_reading_fetch json %s", json);
+	return strdup(json);
 }
 
 /**
