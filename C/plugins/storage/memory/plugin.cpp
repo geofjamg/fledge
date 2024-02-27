@@ -191,9 +191,9 @@ struct Reading {
 	string _assetCode;
 	string _userTs;
 	string _ts;
-	string _json;
+	Value _json;
 
-	Reading(string assetCode, string userTs, string ts, string json)
+	Reading(string assetCode, string userTs, string ts, Value json)
 		: _assetCode(std::move(assetCode)),
 		  _userTs(std::move(userTs)),
 		  _ts(std::move(ts)),
@@ -207,9 +207,9 @@ public:
 		: _readingMinId(0) {
 	}
 
-	void addReading(const string& assetCode, const string& userTs, const string& json);
+	void addReading(const string& assetCode, const string& userTs, Value json);
 	bool purgeReadings(int param);
-	vector<Reading> fetchReadings(unsigned long id, unsigned int blksize);
+	Document fetchReadings(unsigned long firstId, unsigned int blksize);
 
 private:
 	std::mutex _mutex;
@@ -217,14 +217,14 @@ private:
 	vector<Reading> _readings;
 };
 
-void MemoryContext::addReading(const string& assetCode, const string& userTs, const string& json) {
+void MemoryContext::addReading(const string& assetCode, const string& userTs, Value json) {
 	std::lock_guard<std::mutex> lk(_mutex);
 	// add current date time
 	auto now = std::chrono::system_clock::now();
 	auto in_time_t = std::chrono::system_clock::to_time_t(now);
 	std::stringstream ts;
 	ts << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %H:%M:%f");
-	_readings.emplace_back(assetCode, userTs, ts.str(), json);
+	_readings.emplace_back(assetCode, userTs, ts.str(), std::move(json));
 }
 
 bool MemoryContext::purgeReadings(int param) {
@@ -238,17 +238,59 @@ bool MemoryContext::purgeReadings(int param) {
 	return false;
 }
 
-vector<Reading> MemoryContext::fetchReadings(unsigned long id, unsigned int blksize) {
+// iDs seems to start at 1
+Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blksize) {
+	Document doc;
+	doc.SetObject();
+	Document::AllocatorType& allocator = doc.GetAllocator();
+
+	Value rows(kArrayType);
+	Value count;
+	count.SetInt(0);
+
 	std::lock_guard<std::mutex> lk(_mutex);
-	if (id >= _readingMinId && id <= _readingMinId + _readings.size()) {
-		unsigned int size = std::min((unsigned int) _readings.size(), blksize);
-		auto first = _readings.cbegin() + id - _readingMinId;
-		auto last = first + size;
-		return {first, last};
+	if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
+		unsigned int windowFirstId = firstId - _readingMinId - 1;
+		unsigned int windowSize = std::min(static_cast<unsigned int> ((_readings.size() - firstId + 1)), blksize);
+
+		Logger::getLogger()->debug("MEMORY plugin_reading_fetch firstId= %d, blksize=%d, readingsCount=%d, windowFirstId=%d, windowSize=%d",
+			firstId, blksize, _readings.size(), windowFirstId, windowSize);
+
+		count.SetUint(windowSize);
+
+		for (unsigned int i = windowFirstId; i < windowFirstId + windowSize; i++) {
+			Reading& reading = _readings[i];
+
+			Value row(kObjectType);
+
+			unsigned int id = firstId + i - windowFirstId;
+			row.AddMember("id", id, allocator);
+
+			Logger::getLogger()->debug("MEMORY plugin_reading_fetch id=%d, assetCode='%s', userTs='%s', ts='%s'",
+				id, reading._assetCode.c_str(), reading._userTs.c_str(), reading._ts.c_str());
+
+			Value assetCodeValue(reading._assetCode.c_str(), allocator); // TODO No need to copy the string?
+			row.AddMember("asset_code", assetCodeValue, allocator);
+
+			Value userTsValue(reading._userTs.c_str(), allocator); // TODO No need to copy the string?
+			row.AddMember("user_ts", userTsValue, allocator);
+
+			Value tsValue(reading._ts.c_str(), allocator); // TODO No need to copy the string?
+			row.AddMember("ts", tsValue, allocator);
+
+			// create a copy of the json model
+			Value copiedJson(kObjectType);
+			copiedJson.CopyFrom(reading._json, allocator);
+			row.AddMember("reading", copiedJson, allocator);
+
+			rows.PushBack(row, allocator);
+		}
 	}
-	Logger::getLogger()->error("Asking for readings fetch out of available window: id=%d, blksize=%d, readingMinId=%d, readingsSize=%d",
-			id, blksize, _readingMinId, _readings.size());
-	return {};
+
+	doc.AddMember("count", count, allocator);
+	doc.AddMember("rows", rows, allocator);
+
+	return doc;
 }
 
 /**
@@ -295,7 +337,7 @@ int plugin_reading_append(PLUGIN_HANDLE handle, char *readings)
 	}
 
 	int updateAssetCount = 0;
-	for (Value::ConstValueIterator itr = readingsValue.Begin(); itr != readingsValue.End(); ++itr)
+	for (Value::ValueIterator itr = readingsValue.Begin(); itr != readingsValue.End(); ++itr)
 	{
 		if (!itr->IsObject())
 		{
@@ -303,8 +345,8 @@ int plugin_reading_append(PLUGIN_HANDLE handle, char *readings)
 			return -1;
 		}
 
-		const Value* readingValuePtr = itr;
-		const Value& readingValue = *readingValuePtr;
+		Value* readingValuePtr = itr;
+		Value& readingValue = *readingValuePtr;
 
 		// Handles - asset_code
 		const auto assetCode = readingValue["asset_code"].GetString();
@@ -324,13 +366,14 @@ int plugin_reading_append(PLUGIN_HANDLE handle, char *readings)
 			return -1;
 		}
 
-		// Handles - reading
-		StringBuffer buffer;
-		Writer<StringBuffer> writer(buffer);
-		readingValue["reading"].Accept(writer);
-		const string json = escape(buffer.GetString());
+		Value& readingData = readingValue["reading"];
 
-		context->addReading(assetCode, user_ts, json);
+		// detach the value from the original document
+		Value detachedValue;
+		detachedValue.CopyFrom(readingValue, doc.GetAllocator());
+		readingData.SetNull();
+
+		context->addReading(assetCode, user_ts, std::move(readingData));
 		updateAssetCount++;
 	}
 	Logger::getLogger()->info("%d assets have been updated", updateAssetCount);
@@ -355,33 +398,14 @@ char *plugin_reading_fetch(PLUGIN_HANDLE handle, unsigned long id, unsigned int 
 	Logger::getLogger()->debug("MEMORY plugin_reading_fetch %d %d", id, blksize);
 
 	auto context = static_cast<MemoryContext *>(handle);
-	vector<Reading> readings = context->fetchReadings(id, blksize);
 
-	Document doc;
+	Document doc = context->fetchReadings(id, blksize);
 
-	doc.SetObject();
-
-	// Get document allocator
-	Document::AllocatorType& allocator = doc.GetAllocator();
-
-	// Create the array for returned rows
-	Value rows(kArrayType);
-
-	// Rows counter, set it to 0 now
-	Value count;
-	count.SetInt(0);
-
-	// Add 'rows' and 'count' to the final JSON document
-	doc.AddMember("count", count, allocator);
-	doc.AddMember("rows", rows, allocator);
-
-	/* Write out the JSON document we created */
 	StringBuffer buffer;
 	Writer<StringBuffer> writer(buffer);
 	doc.Accept(writer);
-
-	// Set the result as a CPP string
 	char* json = (char *) buffer.GetString();
+
 	Logger::getLogger()->debug("MEMORY plugin_reading_fetch json %s", json);
 	return strdup(json);
 }
