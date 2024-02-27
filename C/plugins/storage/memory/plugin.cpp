@@ -209,7 +209,7 @@ public:
 
 	void addReading(const string& assetCode, const string& userTs, Value json);
 	bool purgeReadings(int param);
-	Document fetchReadings(unsigned long firstId, unsigned int blksize);
+	Document fetchReadings(unsigned long firstId, unsigned int blkSize);
 
 private:
 	std::mutex _mutex;
@@ -239,31 +239,31 @@ bool MemoryContext::purgeReadings(int param) {
 }
 
 // iDs seems to start at 1
-Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blksize) {
+Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) {
 	Document doc;
 	doc.SetObject();
 	Document::AllocatorType& allocator = doc.GetAllocator();
 
 	Value rows(kArrayType);
 	Value count;
-	count.SetInt(0);
+	count.SetUint64(0);
 
 	std::lock_guard<std::mutex> lk(_mutex);
 	if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
-		unsigned int windowFirstId = firstId - _readingMinId - 1;
-		unsigned int windowSize = std::min(static_cast<unsigned int> ((_readings.size() - firstId + 1)), blksize);
+		unsigned long windowFirstId = firstId - _readingMinId - 1;
+		unsigned long windowSize = std::min(_readings.size() - firstId + 1, (unsigned long) blkSize);
 
 		Logger::getLogger()->debug("MEMORY plugin_reading_fetch firstId= %d, blksize=%d, readingsCount=%d, windowFirstId=%d, windowSize=%d",
-			firstId, blksize, _readings.size(), windowFirstId, windowSize);
+			firstId, blkSize, _readings.size(), windowFirstId, windowSize);
 
-		count.SetUint(windowSize);
+		count.SetUint64(windowSize);
 
-		for (unsigned int i = windowFirstId; i < windowFirstId + windowSize; i++) {
+		for (unsigned long i = windowFirstId; i < windowFirstId + windowSize; i++) {
 			Reading& reading = _readings[i];
 
 			Value row(kObjectType);
 
-			unsigned int id = firstId + i - windowFirstId;
+			unsigned long id = firstId + i - windowFirstId;
 			row.AddMember("id", id, allocator);
 
 			Logger::getLogger()->debug("MEMORY plugin_reading_fetch id=%d, assetCode='%s', userTs='%s', ts='%s'",
