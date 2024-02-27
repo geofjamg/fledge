@@ -219,12 +219,18 @@ private:
 
 void MemoryContext::addReading(const string& assetCode, const string& userTs, Value json) {
 	std::lock_guard<std::mutex> lk(_mutex);
-	// add current date time
+	// add current date time with micro seconds
 	auto now = std::chrono::system_clock::now();
-	auto in_time_t = std::chrono::system_clock::to_time_t(now);
+	auto epoch = now.time_since_epoch();
+	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(epoch) % 1000000;
+	auto time = std::chrono::system_clock::to_time_t(now);
 	std::stringstream ts;
-	ts << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %H:%M:%f");
-	_readings.emplace_back(assetCode, userTs, ts.str(), std::move(json));
+	std::tm tm = *std::gmtime(&time);
+	ts << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setfill('0') << std::setw(6) << microseconds.count();
+	// add time zone
+	char formattedDate[LEN_BUFFER_DATE] = {};
+	formatDate(formattedDate, sizeof(formattedDate), ts.str().c_str());
+	_readings.emplace_back(assetCode, userTs, formattedDate, std::move(json));
 }
 
 bool MemoryContext::purgeReadings(int param) {
@@ -287,8 +293,8 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 		}
 	}
 
-	doc.AddMember("count", count, allocator);
-	doc.AddMember("rows", rows, allocator);
+	doc.AddMember("count", count, allocator)
+		.AddMember("rows", rows, allocator);
 
 	return doc;
 }
