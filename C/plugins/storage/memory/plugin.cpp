@@ -251,18 +251,17 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 	Document::AllocatorType& allocator = doc.GetAllocator();
 
 	Value rows(kArrayType);
-	Value count;
-	count.SetUint64(0);
 
+	unsigned long fetch_count = 0;
 	std::lock_guard<std::mutex> lk(_mutex);
 	if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
 		unsigned long windowFirstId = firstId - _readingMinId - 1;
 		unsigned long windowSize = std::min(_readings.size() - firstId + 1, (unsigned long) blkSize);
 
-		Logger::getLogger()->debug("MEMORY plugin_reading_fetch firstId= %d, blksize=%d, readingsCount=%d, windowFirstId=%d, windowSize=%d",
-			firstId, blkSize, _readings.size(), windowFirstId, windowSize);
+		// Logger::getLogger()->debug("MEMORY plugin_reading_fetch firstId= %d, blksize=%d, readingsCount=%d, windowFirstId=%d, windowSize=%d",
+		// 	firstId, blkSize, _readings.size(), windowFirstId, windowSize);
 
-		count.SetUint64(windowSize);
+		fetch_count = windowSize;
 
 		for (unsigned long i = windowFirstId; i < windowFirstId + windowSize; i++) {
 			Reading& reading = _readings[i];
@@ -272,8 +271,8 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 			unsigned long id = firstId + i - windowFirstId;
 			row.AddMember("id", id, allocator);
 
-			Logger::getLogger()->debug("MEMORY plugin_reading_fetch id=%d, assetCode='%s', userTs='%s', ts='%s'",
-				id, reading._assetCode.c_str(), reading._userTs.c_str(), reading._ts.c_str());
+			// Logger::getLogger()->debug("MEMORY plugin_reading_fetch id=%d, assetCode='%s', userTs='%s', ts='%s'",
+			// 	id, reading._assetCode.c_str(), reading._userTs.c_str(), reading._ts.c_str());
 
 			Value assetCodeValue(reading._assetCode.c_str(), allocator); // TODO No need to copy the string?
 			row.AddMember("asset_code", assetCodeValue, allocator);
@@ -291,6 +290,12 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 
 			rows.PushBack(row, allocator);
 		}
+	}
+
+	Value count;
+	count.SetUint64(fetch_count);
+	if (fetch_count > 0) {
+		Logger::getLogger()->debug("%d readings has been fetched", fetch_count);
 	}
 
 	doc.AddMember("count", count, allocator)
@@ -317,7 +322,7 @@ PLUGIN_HANDLE plugin_init(ConfigCategory *category)
  */
 int plugin_reading_append(PLUGIN_HANDLE handle, char *readings)
 {
-	Logger::getLogger()->debug("MEMORY plugin_reading_append '%s'", readings);
+//	Logger::getLogger()->debug("MEMORY plugin_reading_append '%s'", readings);
 
 	auto context = static_cast<MemoryContext *>(handle);
 
@@ -401,7 +406,7 @@ int plugin_readingStream(PLUGIN_HANDLE handle, ReadingStream **readings, bool co
  * Fetch a block of readings from the readings buffer
  */
 char *plugin_reading_fetch(PLUGIN_HANDLE handle, unsigned long id, unsigned int blksize) {
-	Logger::getLogger()->debug("MEMORY plugin_reading_fetch %d %d", id, blksize);
+//	Logger::getLogger()->debug("MEMORY plugin_reading_fetch %d %d", id, blksize);
 
 	auto context = static_cast<MemoryContext *>(handle);
 
@@ -412,7 +417,7 @@ char *plugin_reading_fetch(PLUGIN_HANDLE handle, unsigned long id, unsigned int 
 	doc.Accept(writer);
 	char* json = (char *) buffer.GetString();
 
-	Logger::getLogger()->debug("MEMORY plugin_reading_fetch json %s", json);
+//	Logger::getLogger()->debug("MEMORY plugin_reading_fetch json %s", json);
 	return strdup(json);
 }
 
@@ -474,5 +479,4 @@ unsigned int plugin_reading_purge_asset(PLUGIN_HANDLE handle, char *asset)
 	return 0;
 }
 
-};
-
+}
