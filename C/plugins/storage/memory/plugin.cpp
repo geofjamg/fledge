@@ -1,7 +1,5 @@
 #include <plugin_api.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <strings.h>
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
@@ -9,14 +7,10 @@
 #include <config_category.h>
 #include <sstream>
 #include <iostream>
-#include <map>
-#include <fstream>
 #include <iomanip>
 #include <string>
 #include <logger.h>
-#include <plugin_exception.h>
 #include <reading_stream.h>
-#include <stdarg.h>
 #include <mutex>
 #include <thread>
 #include <unistd.h>
@@ -26,6 +20,7 @@ using namespace std;
 using namespace rapidjson;
 
 #define LEN_BUFFER_DATE 100
+#define STORAGE_PURGE_SIZE	 0x0004U
 
 /**
  * String escape routine
@@ -208,7 +203,10 @@ public:
 	}
 
 	void addReading(const string& assetCode, const string& userTs, Value json);
-	bool purgeReadings(int param);
+	void purgeReadingsByRow(unsigned long maxRows, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
+							unsigned long& readings, unsigned int& duration);
+	void purgeReadingsByAge(unsigned long maxAge, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
+						    unsigned long& readings, unsigned int& duration);
 	Document fetchReadings(unsigned long firstId, unsigned int blkSize);
 
 private:
@@ -233,16 +231,27 @@ void MemoryContext::addReading(const string& assetCode, const string& userTs, Va
 	_readings.emplace_back(assetCode, userTs, formattedDate, std::move(json));
 }
 
-bool MemoryContext::purgeReadings(int param) {
+void MemoryContext::purgeReadingsByRow(unsigned long maxRows, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
+									   unsigned long& readings, unsigned int& duration) {
 	std::lock_guard<std::mutex> lk(_mutex);
-	if (_readings.size() > param) {
-		_readings.erase(_readings.begin(), _readings.begin() + param);
-		_readingMinId += param;
-		Logger::getLogger()->debug("%d reading have been purged, %d remains", param, _readings.size());
-		return true;
+	if (_readings.size() > maxRows) {
+		removed = _readings.size() - maxRows;
+		_readings.erase(_readings.begin(), _readings.begin() + removed);
+		_readingMinId += removed;
+		readings = _readings.size();
+		// TODO duration to current value?
+		Logger::getLogger()->debug("%d reading have been purged by row, %d remains", removed, _readings.size());
 	}
-	return false;
 }
+
+void MemoryContext::purgeReadingsByAge(unsigned long maxAge, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
+								       unsigned long& readings, unsigned int& duration) {
+	std::lock_guard<std::mutex> lk(_mutex);
+	duration = maxAge;
+	readings = _readings.size();
+	Logger::getLogger()->debug("purged by date not impl, %d remains", _readings.size());
+}
+
 
 // iDs seems to start at 1
 Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) {
@@ -256,7 +265,7 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 	std::lock_guard<std::mutex> lk(_mutex);
 	if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
 		unsigned long windowFirstId = firstId - _readingMinId - 1;
-		unsigned long windowSize = std::min(_readings.size() - firstId + 1, (unsigned long) blkSize);
+		unsigned long windowSize = std::min(_readings.size() - windowFirstId, (unsigned long) blkSize);
 
 		// Logger::getLogger()->debug("MEMORY plugin_reading_fetch firstId= %d, blksize=%d, readingsCount=%d, windowFirstId=%d, windowSize=%d",
 		// 	firstId, blkSize, _readings.size(), windowFirstId, windowSize);
@@ -427,7 +436,7 @@ char *plugin_reading_fetch(PLUGIN_HANDLE handle, unsigned long id, unsigned int 
 char *plugin_reading_retrieve(PLUGIN_HANDLE handle, char *condition)
 {
 	Logger::getLogger()->debug("MEMORY plugin_reading_retrieve '%s'", condition);
-	// TODO
+	// TODO only called at startup so OK to return 0 ?
 	return strdup("{\"count\":0,\"rows\":[]}");
 }
 
@@ -437,8 +446,35 @@ char *plugin_reading_retrieve(PLUGIN_HANDLE handle, char *condition)
 char *plugin_reading_purge(PLUGIN_HANDLE handle, unsigned long param, unsigned int flags, unsigned long sent)
 {
 	Logger::getLogger()->debug("MEMORY plugin_reading_purge");
-	// TODO
-	return strdup("");
+
+	auto context = static_cast<MemoryContext *>(handle);
+
+	string method;
+	unsigned long removed = 0;
+	unsigned long unsentPurged = 0;
+	unsigned long unsentRetained = 0;
+	unsigned long readings = 0;
+	unsigned int duration = 0;
+	if (flags & STORAGE_PURGE_SIZE) { // Purge by size
+		method = "row";
+		context->purgeReadingsByRow(param, sent, removed, unsentPurged, unsentRetained, readings, duration);
+	}
+	else {
+		method = "age";
+		context->purgeReadingsByAge(param, removed, sent, unsentPurged, unsentRetained, readings, duration);
+		// TODO
+	}
+
+	string result = "{ \"removed\" : " + std::to_string(removed) + ", ";
+	result += " \"unsentPurged\" : " + std::to_string(unsentPurged) + ", ";
+	result += " \"unsentRetained\" : " + std::to_string(unsentRetained) + ", ";
+	result += " \"readings\" : " + std::to_string(readings) + ", ";
+	result += " \"method\" : \"" + method + "\", ";
+	result += " \"duration\" : " + std::to_string(duration) + " }";
+
+	Logger::getLogger()->debug("MEMORY plugin_reading_purge result %s", result.c_str());
+
+	return strdup(result.c_str());
 }
 
 /**
