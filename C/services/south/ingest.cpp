@@ -298,8 +298,10 @@ Ingest::Ingest(StorageClient& storage,
 
 	// populate asset and storage asset tracking cache
 	AssetTracker *as = AssetTracker::getAssetTracker();
-	as->populateAssetTrackingCache(m_pluginName, "Ingest");
-	as->populateStorageAssetTrackingCache();
+	if (as) {
+		as->populateAssetTrackingCache(m_pluginName, "Ingest");
+		as->populateStorageAssetTrackingCache();
+	}
 
 	// Create the stats entry for the service
 	createServiceStatsDbEntry();
@@ -592,13 +594,6 @@ void Ingest::processQueue()
 				m_failCnt = 0;
 				std::map<std::string, int>		statsEntriesCurrQueue;
 				AssetTracker *tracker = AssetTracker::getAssetTracker();
-				if (tracker == nullptr)
-                                {
-                                        Logger::getLogger()->error("%s could not initialize asset tracker",
-								__FUNCTION__);
-					return;
-                                }
-
 				string lastAsset = "";
 				int *lastStat = NULL;
 				std::map <std::string , std::set<std::string> > assetDatapointMap;
@@ -637,24 +632,26 @@ void Ingest::processQueue()
 
 					if (lastAsset.compare(assetName))
 					{
-						AssetTrackingTuple tuple(m_serviceName,
-									m_pluginName,
-									assetName,
-									"Ingest");
+						if (tracker) {
+							AssetTrackingTuple tuple(m_serviceName,
+										m_pluginName,
+										assetName,
+										"Ingest");
 
-						// Check Asset record exists
-						AssetTrackingTuple* res = tracker->findAssetTrackingCache(tuple);
-						if (res == NULL)
-						{
-							// Record non in cache, add it
-							tracker->addAssetTrackingTuple(tuple);
-						}
-						else
-						{
-							// Possibly Un-deprecate asset tracking record
-							unDeprecateAssetTrackingRecord(res,
-											assetName,
-											"Ingest");
+							// Check Asset record exists
+							AssetTrackingTuple* res = tracker->findAssetTrackingCache(tuple);
+							if (res == NULL)
+							{
+								// Record non in cache, add it
+								tracker->addAssetTrackingTuple(tuple);
+							}
+							else
+							{
+								// Possibly Un-deprecate asset tracking record
+								unDeprecateAssetTrackingRecord(res,
+												assetName,
+												"Ingest");
+							}
 						}
 						lastAsset = assetName;
 						lastStat = &(statsEntriesCurrQueue[assetName]);
@@ -667,22 +664,24 @@ void Ingest::processQueue()
 					delete reading;
 				}
 
-				for (auto itr : assetDatapointMap)
-				{
-					std::set<string> &s = itr.second;
-					unsigned int count = s.size();
-					StorageAssetTrackingTuple storageTuple(m_serviceName,
-										m_pluginName,
-										itr.first,
-										"store",
-										false,
-										"",
-										count);
+				if (tracker) {
+					for (auto itr : assetDatapointMap)
+					{
+						std::set<string> &s = itr.second;
+						unsigned int count = s.size();
+						StorageAssetTrackingTuple storageTuple(m_serviceName,
+											m_pluginName,
+											itr.first,
+											"store",
+											false,
+											"",
+											count);
 
-					StorageAssetTrackingTuple *ptr = &storageTuple;
+						StorageAssetTrackingTuple *ptr = &storageTuple;
 
-					// Update SAsset Tracker database and cache
-					tracker->updateCache(s, ptr);
+						// Update SAsset Tracker database and cache
+						tracker->updateCache(s, ptr);
+					}
 				}
 
 				delete q;
@@ -874,20 +873,23 @@ void Ingest::processQueue()
 									assetName,
 									"Ingest");
 
-						// Check Asset record exists
-						AssetTrackingTuple* res = tracker->findAssetTrackingCache(tuple);
-						if (res == NULL)
-						{
-							// Record not in cache, add it
-							tracker->addAssetTrackingTuple(tuple);
-						}
-						else
-						{
-							// Un-deprecate asset tracking record
-							unDeprecateAssetTrackingRecord(res,
-											assetName,
-											"Ingest");
-						}
+                        if (tracker)
+                        {
+                        	// Check Asset record exists
+                        	AssetTrackingTuple* res = tracker->findAssetTrackingCache(tuple);
+                        	if (res == NULL)
+                        	{
+                        		// Record not in cache, add it
+                        		tracker->addAssetTrackingTuple(tuple);
+                        	}
+                        	else
+                        	{
+                        		// Un-deprecate asset tracking record
+                        		unDeprecateAssetTrackingRecord(res,
+												assetName,
+												"Ingest");
+                        	}
+                        }
 
 						lastAsset = assetName;
                                                   lastStat = &statsEntriesCurrQueue[assetName];
@@ -906,11 +908,13 @@ void Ingest::processQueue()
 				}
 				m_data->clear();
 
-				for (auto itr : assetDatapointMap)
+				if (tracker)
 				{
-					std::set<string> &s = itr.second;
-				        unsigned int count = s.size();
-				        StorageAssetTrackingTuple storageTuple(m_serviceName,
+					for (auto itr : assetDatapointMap)
+					{
+						std::set<string> &s = itr.second;
+						unsigned int count = s.size();
+						StorageAssetTrackingTuple storageTuple(m_serviceName,
 										m_pluginName,
 										itr.first,
 										"store",
@@ -918,10 +922,11 @@ void Ingest::processQueue()
 										"",
 										count);
 
-					StorageAssetTrackingTuple *ptr = &storageTuple;
+						StorageAssetTrackingTuple *ptr = &storageTuple;
 
-					// Update SAsset Tracker database and cache
-					tracker->updateCache(s, ptr);
+						// Update SAsset Tracker database and cache
+						tracker->updateCache(s, ptr);
+					}
 				}
 
 				{

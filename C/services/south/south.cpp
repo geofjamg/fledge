@@ -422,7 +422,7 @@ void SouthService::start(string& coreAddress, unsigned short corePort)
 			logger->info("Defaulting to inline defaults for south configuration");
 		}
 
-		m_assetTracker = new AssetTracker(m_mgtClient, m_name);
+//		m_assetTracker = new AssetTracker(m_mgtClient, m_name);
 
 		{
 		// Instantiate the Ingest class

@@ -333,9 +333,11 @@ SendingProcess::SendingProcess(int argc, char** argv) : FledgeProcess(argc, argv
 
 	filterPipeline = NULL;
 
-	m_assetTracker = new AssetTracker(getManagementClient(), getName());
-	AssetTracker::getAssetTracker()->populateAssetTrackingCache(getName(), "Egress");
-	
+//	m_assetTracker = new AssetTracker(getManagementClient(), getName());
+	if (m_assetTracker) {
+		m_assetTracker->populateAssetTrackingCache(getName(), "Egress");
+	}
+
 	// Load filter plugins
 	if (!this->loadFilters(this->getName()))
 	{

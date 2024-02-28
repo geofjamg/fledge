@@ -516,18 +516,21 @@ static void sendDataThread(SendingProcess *sendData)
 					processUpdate = true;
 					exitCode = 0;
 
-					// Update asset tracker table/cache, if required
-					vector<Reading *> *vec = sendData->m_buffer.at(sendIdx)->getAllReadingsPtr();
+					AssetTracker* atr = AssetTracker::getAssetTracker();
+					if (atr) {
+						// Update asset tracker table/cache, if required
+						vector<Reading *> *vec = sendData->m_buffer.at(sendIdx)->getAllReadingsPtr();
 
-					for (vector<Reading *>::iterator it = vec->begin(); it != vec->end(); ++it)
-					{
-						Reading *reading = *it;
-
-						AssetTrackingTuple tuple(sendData->getName(), sendData->getPluginName(), reading->getAssetName(), "Egress");
-						if (!AssetTracker::getAssetTracker()->checkAssetTrackingCache(tuple))
+						for (vector<Reading *>::iterator it = vec->begin(); it != vec->end(); ++it)
 						{
-							AssetTracker::getAssetTracker()->addAssetTrackingTuple(tuple);
-							Logger::getLogger()->info("sendDataThread:  Adding new asset tracking tuple - egress: %s", tuple.assetToString().c_str());
+							Reading *reading = *it;
+
+							AssetTrackingTuple tuple(sendData->getName(), sendData->getPluginName(), reading->getAssetName(), "Egress");
+							if (!atr->checkAssetTrackingCache(tuple))
+							{
+								atr->addAssetTrackingTuple(tuple);
+								Logger::getLogger()->info("sendDataThread:  Adding new asset tracking tuple - egress: %s", tuple.assetToString().c_str());
+							}
 						}
 					}
 				}

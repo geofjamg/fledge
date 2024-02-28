@@ -146,12 +146,15 @@ unsigned long DataSender::send(ReadingSet *readings)
 
 			if (reading->getId() <= lastSent)
 			{
-
-				AssetTrackingTuple tuple(m_service->getName(), m_service->getPluginName(), reading->getAssetName(), "Egress");
-				if (!AssetTracker::getAssetTracker()->checkAssetTrackingCache(tuple))
+				AssetTracker* atr = AssetTracker::getAssetTracker();
+				if (atr)
 				{
-					AssetTracker::getAssetTracker()->addAssetTrackingTuple(tuple);
-					m_logger->info("sendDataThread:  Adding new asset tracking tuple - egress: %s", tuple.assetToString().c_str());
+					AssetTrackingTuple tuple(m_service->getName(), m_service->getPluginName(), reading->getAssetName(), "Egress");
+					if (!atr->checkAssetTrackingCache(tuple))
+					{
+						atr->addAssetTrackingTuple(tuple);
+						m_logger->info("sendDataThread:  Adding new asset tracking tuple - egress: %s", tuple.assetToString().c_str());
+					}
 				}
 
 				// Remove current reading

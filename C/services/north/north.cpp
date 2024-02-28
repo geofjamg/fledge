@@ -419,8 +419,10 @@ void NorthService::start(string& coreAddress, unsigned short corePort)
 		}
 
 		logger->debug("Initialise the asset tracker");
-		m_assetTracker = new AssetTracker(m_mgtClient, m_name);
-		AssetTracker::getAssetTracker()->populateAssetTrackingCache(m_name, "Egress");
+//		m_assetTracker = new AssetTracker(m_mgtClient, m_name);
+		if (m_assetTracker) {
+			m_assetTracker->populateAssetTrackingCache(m_name, "Egress");
+		}
 
 		// If the plugin supports control register the callback functions
 		if (northPlugin->hasControl())
