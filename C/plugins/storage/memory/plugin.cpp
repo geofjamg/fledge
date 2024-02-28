@@ -216,7 +216,6 @@ private:
 };
 
 void MemoryContext::addReading(const string& assetCode, const string& userTs, Value json) {
-	std::lock_guard<std::mutex> lk(_mutex);
 	// add current date time with micro seconds
 	auto now = std::chrono::system_clock::now();
 	auto epoch = now.time_since_epoch();
@@ -228,6 +227,7 @@ void MemoryContext::addReading(const string& assetCode, const string& userTs, Va
 	// add time zone
 	char formattedDate[LEN_BUFFER_DATE] = {};
 	formatDate(formattedDate, sizeof(formattedDate), ts.str().c_str());
+	std::lock_guard<std::mutex> lk(_mutex);
 	_readings.emplace_back(assetCode, userTs, formattedDate, std::move(json));
 }
 
