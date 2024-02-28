@@ -15,6 +15,7 @@
 #include <thread>
 #include <unistd.h>
 #include <utility>
+#include <boost/thread/pthread/shared_mutex.hpp>
 
 using namespace std;
 using namespace rapidjson;
@@ -210,7 +211,7 @@ public:
 	Document fetchReadings(unsigned long firstId, unsigned int blkSize);
 
 private:
-	std::mutex _mutex;
+	boost::shared_mutex  _mutex;
 	unsigned long _readingMinId;
 	vector<Reading> _readings;
 };
@@ -227,13 +228,13 @@ void MemoryContext::addReading(const string& assetCode, const string& userTs, Va
 	// add time zone
 	char formattedDate[LEN_BUFFER_DATE] = {};
 	formatDate(formattedDate, sizeof(formattedDate), ts.str().c_str());
-	std::lock_guard<std::mutex> lk(_mutex);
+	boost::unique_lock<boost::shared_mutex> lock(_mutex);
 	_readings.emplace_back(assetCode, userTs, formattedDate, std::move(json));
 }
 
 void MemoryContext::purgeReadingsByRow(unsigned long maxRows, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
 									   unsigned long& readings, unsigned int& duration) {
-	std::lock_guard<std::mutex> lk(_mutex);
+	boost::unique_lock<boost::shared_mutex> lock(_mutex);
 	if (_readings.size() > maxRows) {
 		removed = _readings.size() - maxRows;
 		_readings.erase(_readings.begin(), _readings.begin() + removed);
@@ -246,7 +247,7 @@ void MemoryContext::purgeReadingsByRow(unsigned long maxRows, unsigned long sent
 
 void MemoryContext::purgeReadingsByAge(unsigned long maxAge, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
 								       unsigned long& readings, unsigned int& duration) {
-	std::lock_guard<std::mutex> lk(_mutex);
+	boost::unique_lock<boost::shared_mutex> lock(_mutex);
 	duration = maxAge;
 	readings = _readings.size();
 	Logger::getLogger()->debug("purged by date not impl, %d remains", _readings.size());
@@ -262,7 +263,7 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 	Value rows(kArrayType);
 
 	unsigned long fetch_count = 0;
-	std::lock_guard<std::mutex> lk(_mutex);
+	boost::shared_lock<boost::shared_mutex> lock(_mutex);
 	if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
 		unsigned long windowFirstId = firstId - _readingMinId - 1;
 		unsigned long windowSize = std::min(_readings.size() - windowFirstId, (unsigned long) blkSize);
