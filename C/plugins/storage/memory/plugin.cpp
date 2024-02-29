@@ -1,3 +1,4 @@
+#include <condition_variable>
 #include <plugin_api.h>
 #include <stdio.h>
 #include "rapidjson/document.h"
@@ -153,6 +154,40 @@ bool formatDate(char *formatted_date, size_t buffer_size, const char *date) {
 	return true;
 }
 
+// C++11 does not have a read write lock and boost shared_mutex does not work
+class ReaderWriterLock {
+	std::mutex mtx;
+	std::condition_variable cv;
+	int readers = 0;
+	bool writer = false;
+
+public:
+	void lockRead() {
+		std::unique_lock<std::mutex> lock(mtx);
+		cv.wait(lock, [this](){ return !writer; });
+		++readers;
+	}
+
+	void unlockRead() {
+		std::unique_lock<std::mutex> lock(mtx);
+		if (--readers == 0) {
+			cv.notify_one();
+		}
+	}
+
+	void lockWrite() {
+		std::unique_lock<std::mutex> lock(mtx);
+		cv.wait(lock, [this](){ return !writer && readers == 0; });
+		writer = true;
+	}
+
+	void unlockWrite() {
+		std::unique_lock<std::mutex> lock(mtx);
+		writer = false;
+		cv.notify_all();
+	}
+};
+
 /**
  * The memory plugin interface
  */
@@ -209,7 +244,7 @@ public:
 	Document fetchReadings(unsigned long firstId, unsigned int blkSize);
 
 private:
-	std::mutex  _mutex;
+	ReaderWriterLock rwLock;
 	unsigned long _readingMinId;
 	vector<Reading> _readings;
 };
@@ -226,13 +261,14 @@ void MemoryContext::addReading(const string& assetCode, const string& userTs, Va
 	// add time zone
 	char formattedDate[LEN_BUFFER_DATE] = {};
 	formatDate(formattedDate, sizeof(formattedDate), ts.str().c_str());
-	std::lock_guard<std::mutex> lock(_mutex);
+	rwLock.lockWrite();
 	_readings.emplace_back(assetCode, userTs, formattedDate, std::move(json));
+	rwLock.unlockWrite();
 }
 
 void MemoryContext::purgeReadingsByRow(unsigned long maxRows, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
 									   unsigned long& readings, unsigned int& duration) {
-	std::lock_guard<std::mutex> lock(_mutex);
+	rwLock.lockWrite();
 	if (_readings.size() > maxRows) {
 		removed = _readings.size() - maxRows;
 		_readings.erase(_readings.begin(), _readings.begin() + removed);
@@ -241,14 +277,16 @@ void MemoryContext::purgeReadingsByRow(unsigned long maxRows, unsigned long sent
 		// TODO duration to current value?
 		Logger::getLogger()->debug("%d reading have been purged by row, %d remains", removed, _readings.size());
 	}
+	rwLock.unlockWrite();
 }
 
 void MemoryContext::purgeReadingsByAge(unsigned long maxAge, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
 								       unsigned long& readings, unsigned int& duration) {
-	std::lock_guard<std::mutex> lock(_mutex);
+	rwLock.lockWrite();
 	duration = maxAge;
 	readings = _readings.size();
 	Logger::getLogger()->debug("purged by date not impl, %d remains", _readings.size());
+	rwLock.unlockWrite();
 }
 
 
@@ -261,7 +299,7 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 	Value rows(kArrayType);
 
 	unsigned long fetch_count = 0;
-	std::lock_guard<std::mutex> lock(_mutex);
+	rwLock.lockRead();
 	if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
 		unsigned long windowFirstId = firstId - _readingMinId - 1;
 		unsigned long windowSize = std::min(_readings.size() - windowFirstId, (unsigned long) blkSize);
@@ -299,6 +337,7 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 			rows.PushBack(row, allocator);
 		}
 	}
+	rwLock.unlockRead();
 
 	Value count;
 	count.SetUint64(fetch_count);
