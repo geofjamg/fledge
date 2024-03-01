@@ -185,6 +185,7 @@ int MemoryContext::addReading(const char* readings) {
 		rwLock.lockWrite();
 		_readings.emplace_back(assetCode, userTs, formattedDate, std::move(detachedValue));
 		rwLock.unlockWrite();
+		updateAssetCount++;
 	}
 
 	return updateAssetCount;
