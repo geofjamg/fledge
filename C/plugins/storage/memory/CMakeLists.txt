@@ -10,6 +10,7 @@ set(STORAGE_COMMON_LIB storage-common-lib)
 file(GLOB SOURCES *.cpp)
 
 # Include header files
+include_directories(include)
 include_directories(../../../common/include)
 include_directories(../../../services/common/include)
 include_directories(../common/include)
