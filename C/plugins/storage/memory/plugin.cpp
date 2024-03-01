@@ -236,7 +236,7 @@ public:
 		: _readingMinId(0) {
 	}
 
-	void addReading(const string& assetCode, const string& userTs, Value json);
+	int addReading(const char* readings);
 	void purgeReadingsByRow(unsigned long maxRows, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
 							unsigned long& readings, unsigned int& duration);
 	void purgeReadingsByAge(unsigned long maxAge, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
@@ -249,8 +249,8 @@ private:
 	vector<Reading> _readings;
 };
 
-void MemoryContext::addReading(const string& assetCode, const string& userTs, Value json) {
-	// add current date time with micro seconds
+int MemoryContext::addReading(const char* readings) {
+	// get current date time with micro seconds
 	auto now = std::chrono::system_clock::now();
 	auto epoch = now.time_since_epoch();
 	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(epoch) % 1000000;
@@ -258,12 +258,37 @@ void MemoryContext::addReading(const string& assetCode, const string& userTs, Va
 	std::stringstream ts;
 	std::tm tm = *std::gmtime(&time);
 	ts << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "." << std::setfill('0') << std::setw(6) << microseconds.count();
+
 	// add time zone
 	char formattedDate[LEN_BUFFER_DATE] = {};
 	formatDate(formattedDate, sizeof(formattedDate), ts.str().c_str());
-	rwLock.lockWrite();
-	_readings.emplace_back(assetCode, userTs, formattedDate, std::move(json));
-	rwLock.unlockWrite();
+
+	Document doc;
+	doc.Parse(readings);
+	Value &readingsValue = doc["readings"];
+	int updateAssetCount = 0;
+	for (Value::ValueIterator itr = readingsValue.Begin(); itr != readingsValue.End(); ++itr) {
+		Value* readingValuePtr = itr;
+		Value& readingValue = *readingValuePtr;
+
+		const auto assetCode = readingValue["asset_code"].GetString();
+
+		char formatted_date[LEN_BUFFER_DATE] = {};
+		const char* userTs = (*itr)["user_ts"].GetString();
+		formatDate(formatted_date, sizeof(formatted_date), userTs);
+
+		// detach the value from the original document
+		Value& readingData = readingValue["reading"];
+		Value detachedValue;
+		detachedValue.CopyFrom(readingValue, doc.GetAllocator());
+		readingData.SetNull();
+
+		rwLock.lockWrite();
+		_readings.emplace_back(assetCode, userTs, formattedDate, std::move(detachedValue));
+		rwLock.unlockWrite();
+	}
+
+	return updateAssetCount;
 }
 
 void MemoryContext::purgeReadingsByRow(unsigned long maxRows, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
@@ -373,67 +398,8 @@ int plugin_reading_append(PLUGIN_HANDLE handle, char *readings)
 
 	auto context = static_cast<MemoryContext *>(handle);
 
-	Document doc;
-	ParseResult ok = doc.Parse(readings);
-	if (!ok)
-	{
-		Logger::getLogger()->error("Fail to parse document: %s", GetParseError_En(doc.GetParseError()));
-		return -1;
-	}
+	int updateAssetCount = context->addReading(readings);
 
-	if (!doc.HasMember("readings"))
-	{
-		Logger::getLogger()->error("Payload is missing a readings array");
-		return -1;
-	}
-
-	Value &readingsValue = doc["readings"];
-	if (!readingsValue.IsArray())
-	{
-		Logger::getLogger()->error("Payload is missing the readings array");
-		return -1;
-	}
-
-	int updateAssetCount = 0;
-	for (Value::ValueIterator itr = readingsValue.Begin(); itr != readingsValue.End(); ++itr)
-	{
-		if (!itr->IsObject())
-		{
-			Logger::getLogger()->error("Each reading in the readings array must be an object");
-			return -1;
-		}
-
-		Value* readingValuePtr = itr;
-		Value& readingValue = *readingValuePtr;
-
-		// Handles - asset_code
-		const auto assetCode = readingValue["asset_code"].GetString();
-
-		if (strlen(assetCode) == 0)
-		{
-			Logger::getLogger()->warn("Empty asset code value, row ignored.");
-			continue;
-		}
-
-		// Handles - user_ts
-		char formatted_date[LEN_BUFFER_DATE] = {0};
-		const char* user_ts = (*itr)["user_ts"].GetString();
-		if (!formatDate(formatted_date, sizeof(formatted_date), user_ts) )
-		{
-			Logger::getLogger()->error("Invalid date |%s|", user_ts);
-			return -1;
-		}
-
-		Value& readingData = readingValue["reading"];
-
-		// detach the value from the original document
-		Value detachedValue;
-		detachedValue.CopyFrom(readingValue, doc.GetAllocator());
-		readingData.SetNull();
-
-		context->addReading(assetCode, user_ts, std::move(readingData));
-		updateAssetCount++;
-	}
 	Logger::getLogger()->info("%d assets have been updated", updateAssetCount);
 
 	return 0;
