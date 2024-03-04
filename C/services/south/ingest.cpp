@@ -763,6 +763,8 @@ void Ingest::processQueue()
 			}
 		}
 
+		bool lowLatency = false;
+
 		/*
 		 * Check the first reading in the list to see if we are meeting the
 		 * latency configuration we have been set
@@ -789,6 +791,9 @@ void Ingest::processQueue()
 					m_logger->warn("Send latency now within requested limits");
 					m_highLatency = false;
 				}
+				if (latency < 50) { // older message has a latency < 50 ms
+					lowLatency = true;
+				}
 			}
 		}
 			
@@ -803,7 +808,7 @@ void Ingest::processQueue()
 		 *	2- some readings removed
 		 *	3- New set of readings
 		 */
-		if (m_data && m_data->size())
+		if (m_data && m_data->size() && !lowLatency)
 		{
 			if (m_storage.readingAppend(*m_data) == false)
 			{
