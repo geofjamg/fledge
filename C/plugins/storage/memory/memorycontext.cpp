@@ -176,14 +176,12 @@ int MemoryContext::addReading(const char* readings) {
 		const char* userTs = (*itr)["user_ts"].GetString();
 		formatDate(formatted_date, sizeof(formatted_date), userTs);
 
-		// detach the value from the original document
 		Value& readingData = readingValue["reading"];
-		Value detachedValue;
-		detachedValue.CopyFrom(readingValue, doc.GetAllocator());
+		// detach the value from the original document
 		readingData.SetNull();
 
 		rwLock.lockWrite();
-		_readings.emplace_back(assetCode, userTs, formattedDate, std::move(detachedValue));
+		_readings.emplace_back(assetCode, userTs, formattedDate, std::move(readingData));
 		rwLock.unlockWrite();
 		updateAssetCount++;
 	}
@@ -245,19 +243,19 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 			// Logger::getLogger()->debug("MEMORY plugin_reading_fetch id=%d, assetCode='%s', userTs='%s', ts='%s'",
 			// 	id, reading._assetCode.c_str(), reading._userTs.c_str(), reading._ts.c_str());
 
-			Value assetCodeValue(reading._assetCode.c_str(), allocator); // TODO No need to copy the string?
+			Value assetCodeValue(rapidjson::kStringType);
+			assetCodeValue.SetString(reading._assetCode.c_str(), static_cast<rapidjson::SizeType>(reading._assetCode.length()), allocator);
 			row.AddMember("asset_code", assetCodeValue, allocator);
 
-			Value userTsValue(reading._userTs.c_str(), allocator); // TODO No need to copy the string?
+			Value userTsValue(rapidjson::kStringType);
+			userTsValue.SetString(reading._userTs.c_str(), static_cast<rapidjson::SizeType>(reading._userTs.length()), allocator);
 			row.AddMember("user_ts", userTsValue, allocator);
 
-			Value tsValue(reading._ts.c_str(), allocator); // TODO No need to copy the string?
+			Value tsValue(rapidjson::kStringType);
+			tsValue.SetString(reading._ts.c_str(), static_cast<rapidjson::SizeType>(reading._ts.length()), allocator);
 			row.AddMember("ts", tsValue, allocator);
 
-			// create a copy of the json model
-			Value copiedJson(kObjectType);
-			copiedJson.CopyFrom(reading._json, allocator);
-			row.AddMember("reading", copiedJson, allocator);
+			row.AddMember("reading", reading._json, allocator);
 
 			rows.PushBack(row, allocator);
 		}

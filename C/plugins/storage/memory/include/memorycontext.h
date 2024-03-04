@@ -67,6 +67,7 @@ public:
     void purgeReadingsByAge(unsigned long maxAge, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
                             unsigned long& readings, unsigned int& duration);
     rapidjson::Document fetchReadings(unsigned long firstId, unsigned int blkSize);
+    unsigned int getReadingCount() const { return _readings.size(); }
 
 private:
     ReaderWriterLock rwLock;
