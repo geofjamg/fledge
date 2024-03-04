@@ -115,7 +115,6 @@ private:
 
 	StorageClient&			m_storage;
 	long				m_timeout;
-	long				m_minTimeOut;
 	bool				m_shutdown;
 	unsigned int			m_queueSizeThreshold;
 	bool				m_running;
