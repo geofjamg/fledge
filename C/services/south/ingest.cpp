@@ -323,6 +323,7 @@ Ingest::Ingest(StorageClient& storage,
 void Ingest::start(long timeout, unsigned int threshold)
 {
 	m_timeout = timeout;
+	m_minTimeOut = 50;
 	m_queueSizeThreshold = threshold;
 	m_thread = new thread(ingestThread, this);
 	m_statsThread = new thread(statsThread, this);
@@ -510,7 +511,7 @@ long Ingest::calculateWaitTime()
 			(now.tv_usec - tm.tv_usec) / 1000;
 		timeout = m_timeout - ageMS;
 	}
-	return timeout;
+	return min(m_minTimeOut, timeout);
 }
 
 /**
