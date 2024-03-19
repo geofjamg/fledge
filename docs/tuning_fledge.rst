@@ -47,6 +47,8 @@ The south services within Fledge each have a set of advanced configuration optio
 
   - *Reading Rate* - The rate at which polling occurs for this south service. This parameter only has effect if your south plugin is polled, asynchronous south services do not use this parameter. The units are defined by the setting of the *Reading Rate Per* item.
 
+  - *Asset Tracker Update* - This control how frequently the asset tracker flushes the cache of asset tracking information to the storage layer. It is a value expressed in milliseconds. The asset tracker only write updates, therefore if you have a fixed set of assets flowing in a pipeline the asset tracker will only write any data the first time each asset is seen and will then perform no further writes. If you have variablility in your assets or asset structure the asset tracker will be more active and it becomes more useful to tune this parameter.
+
   - *Reading Rate Per* - This defines the units to be used in the *Reading Rate* value. It allows the selection of per *second*, *minute* or *hour*.
 
   - *Poll Type* - This defines the mechanism used to control the poll requests that will be sent to the plugin. Three options are currently available, interval polling and fixed time polling and polling on demand.
@@ -102,7 +104,9 @@ Performance counters are collected in the service and a report is written once p
 
   - The number of samples of the counter collected within the current minute
 
-In the current release the performance counters can only be retrieved by director access to the configuration and statistics database, they are stored in the *monitors* table. Future releases will include tools for the retrieval and analysis of these performance counters.
+In the current release the performance counters can only be retrieved by direct access to the configuration and statistics database, they are stored in the *monitors* table. Or via the REST API. Future releases will include tools for the retrieval and analysis of these performance counters.
+
+To access the performance counters via the REST API use the entry point /fledge/monitors to retrieve all counters, or /fledge/monitor/{service name} to retrieve counters for a single service.
 
 When collection is enabled the following counters will be collected for the south service that is enabled.
 
@@ -184,6 +188,8 @@ In a similar way to the south services, north services and tasks also have advan
 
   - *Data block size* - This defines the number of readings that will be sent to the north plugin for each call to the *plugin_send* entry point. This allows the performance of the north data pipeline to be adjusted, with larger blocks sizes increasing the performance, by reducing overhead, but at the cost of requiring more memory in the north service or task to buffer the data as it flows through the pipeline. Setting this value too high may cause issues for certain of the north plugins that have limitations on the number of messages they can handle within a single block.
 
+  - *Asset Tracker Update* - This control how frequently the asset tracker flushes the cache of asset tracking information to the storage layer. It is a value expressed in milliseconds. The asset tracker only write updates, therefore if you have a fixed set of assets flowing in a pipeline the asset tracker will only write any data the first time each asset is seen and will then perform no further writes. If you have variablility in your assets or asset structure the asset tracker will be more active and it becomes more useful to tune this parameter.
+
   - *Performance Counters* - This option allows for collection of performance counters that can be use to help tune the north service.
 
 Performance Counters
@@ -201,7 +207,133 @@ Performance counters are collected in the service and a report is written once p
 
   - The number of samples of the counter collected within the current minute
 
-In the current release the performance counters can only be retrieved by director access to the configuration and statistics database, they are stored in the *monitors* table. Future releases will include tools for the retrieval and analysis of these performance counters.
+In the current release the performance counters can only be retrieved by direct access to the configuration and statistics database, they are stored in the *monitors* table. Future releases will include tools for the retrieval and analysis of these performance counters.
+
+To access the performance counters via the REST API use the entry point */fledge/monitors* to retrieve all counters, or */fledge/monitor/{service name}* to retrieve counters for a single service.
+
+.. code-block:: bash
+
+    $ curl -s http://localhost:8081/fledge/monitors | jq
+    {
+      "monitors": [
+        {
+          "monitor": "storedReadings",
+          "values": [
+            {
+              "average": 102,
+              "maximum": 102,
+              "minimum": 102,
+              "samples": 20,
+              "timestamp": "2024-02-19 16:33:46.690",
+              "service": "si"
+            },
+            {
+              "average": 102,
+              "maximum": 102,
+              "minimum": 102,
+              "samples": 20,
+              "timestamp": "2024-02-19 16:34:46.713",
+              "service": "si"
+            },
+            {
+              "average": 102,
+              "maximum": 102,
+              "minimum": 102,
+              "samples": 20,
+              "timestamp": "2024-02-19 16:35:46.736",
+              "service": "si"
+            }
+          ]
+        },
+        {
+          "monitor": "readLatency",
+          "values": [
+            {
+              "average": 2055,
+              "maximum": 2064,
+              "minimum": 2055,
+              "samples": 20,
+              "timestamp": "2024-02-19 16:33:46.698",
+              "service": "si"
+            },
+            {
+              "average": 2056,
+              "maximum": 2068,
+              "minimum": 2053,
+              "samples": 20,
+              "timestamp": "2024-02-19 16:34:46.719",
+              "service": "si"
+            },
+            {
+              "average": 2058,
+              "maximum": 2079,
+              "minimum": 2056,
+              "samples": 20,
+              "timestamp": "2024-02-19 16:35:46.743",
+              "service": "si"
+            }
+          ]
+        },
+        {
+          "monitor": "ingestCount",
+          "values": [
+            {
+              "average": 34,
+              "maximum": 34,
+              "minimum": 34,
+              "samples": 60,
+              "timestamp": "2024-02-19 16:33:46.702",
+              "service": "si"
+            },
+            {
+              "average": 34,
+              "maximum": 34,
+              "minimum": 34,
+              "samples": 60,
+              "timestamp": "2024-02-19 16:34:46.724",
+              "service": "si"
+            },
+            {
+              "average": 34,
+              "maximum": 34,
+              "minimum": 34,
+              "samples": 60,
+              "timestamp": "2024-02-19 16:35:46.748",
+              "service": "si"
+            }
+          ]
+        },
+        {
+          "monitor": "queueLength",
+          "values": [
+            {
+              "average": 55,
+              "maximum": 100,
+              "minimum": 34,
+              "samples": 60,
+              "timestamp": "2024-02-19 16:33:46.706",
+              "service": "si"
+            },
+            {
+              "average": 55,
+              "maximum": 100,
+              "minimum": 34,
+              "samples": 60,
+              "timestamp": "2024-02-19 16:34:46.729",
+              "service": "si"
+            },
+            {
+              "average": 55,
+              "maximum": 100,
+              "minimum": 34,
+              "samples": 60,
+              "timestamp": "2024-02-19 16:35:46.753",
+              "service": "si"
+            }
+          ]
+        }
+      ]
+    }
 
 When collection is enabled the following counters will be collected for the south service that is enabled.
 
@@ -368,6 +500,8 @@ The storage plugin configuration can be found in the *Advanced* section of the *
 
 - **Purge Exclusion**: This is not a performance settings, but allows a number of assets to be exempted from the purge process. This value is a comma separated list of asset names that will be excluded from the purge operation.
 
+- **Vacuum Interval**: The interval between execution of vacuum operations on the database, expressed in hours. A vacuum operation is used to reclaim space occupied in the database by data that has been deleted.
+
 sqlitelb Configuration
 ######################
 
@@ -388,6 +522,10 @@ The storage plugin configuration can be found in the *Advanced* section of the *
 .. note::
 
     Although the pool size denotes the number of parallel operations that can take place, database locking considerations may reduce the number of actual operations in progress at any point in time.
+
+- **Vacuum Interval**: The interval between execution of vacuum operations on the database, expressed in hours. A vacuum operation is used to reclaim space occupied in the database by data that has been deleted.
+
+- **Purge Block Size**: The maximum number of rows that will be deleted within a single transactions when performing a purge operation on the readings data. Large block sizes are potential the most efficient in terms of the time to complete the purge operation, however this will increase database contention as a database lock is required that will cause any ingest operations to be stalled until the purge completes. By setting a lower block size the purge will take longer, nut ingest operations can be interleaved with the purging of blocks.
 
 postgres Configuration
 ######################
@@ -434,3 +572,6 @@ The storage plugin configuration can be found in the *Advanced* section of the *
  - **Persist Data**: Control the persisting of the in-memory database on shutdown. If enabled the in-memory database will be persisted on shutdown of Fledge and reloaded when Fledge is next started. Selecting this option will slow down the shutdown and startup processing for Fledge.
 
  - **Persist File**: This defines the name of the file to which the in-memory database will be persisted.
+
+ - **Purge Block Size**: The maximum number of rows that will be deleted within a single transactions when performing a purge operation on the readings data. Large block sizes are potential the most efficient in terms of the time to complete the purge operation, however this will increase database contention as a database lock is required that will cause any ingest operations to be stalled until the purge completes. By setting a lower block size the purge will take longer, nut ingest operations can be interleaved with the purging of blocks.
+
