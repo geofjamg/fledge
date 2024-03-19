@@ -740,40 +740,9 @@ class Server:
         _logger.info("'fledge.readings' is stored in memory and a restarted has occurred, "
                      "force reset of 'fledge.streams' last_objects")
 
-        configuration = loop.run_until_complete(cls._storage_client_async.query_tbl('configuration'))
-        rows = configuration['rows']
-        if len(rows) > 0:
-            streams_id = []
-            # Identifies the sending process handling the readings table
-            for _item in rows:
-                try:
-                    if _item['value']['source']['value'] is not None:
-                        if _item['value']['source']['value'] == "readings":
-                            # Sending process in C++
-                            try:
-                                streams_id.append(_item['value']['streamId']['value'])
-                            except KeyError:
-                                # Sending process in Python
-                                try:
-                                    streams_id.append(_item['value']['stream_id']['value'])
-                                except KeyError:
-                                    pass
-                except KeyError:
-                    pass
-
-            # Reset identified rows of the streams table
-            if len(streams_id) >= 0:
-                for _stream_id in streams_id:
-
-                    # Checks if there is the row in the Stream table to avoid an error during the update
-                    where = 'id={0}'.format(_stream_id)
-                    streams = loop.run_until_complete(cls._readings_client_async.query_tbl('streams', where))
-                    rows = streams['rows']
-
-                    if len(rows) > 0:
-                        payload = payload_builder.PayloadBuilder().SET(last_object=0, ts='now()')\
-                            .WHERE(['id', '=', _stream_id]).payload()
-                        loop.run_until_complete(cls._storage_client_async.update_tbl("streams", payload))
+        # Reset identified rows of the streams table
+        payload = payload_builder.PayloadBuilder().SET(last_object=0, ts='now()').payload()
+        loop.run_until_complete(cls._storage_client_async.update_tbl("streams", payload))
 
     @classmethod
     def _check_readings_table(cls, loop):
