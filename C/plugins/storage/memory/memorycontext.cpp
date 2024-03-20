@@ -177,12 +177,17 @@ int MemoryContext::addReading(const char* readings) {
 		formatDate(formatted_date, sizeof(formatted_date), userTs);
 
 		Value& readingData = readingValue["reading"];
-		// detach the value from the original document
-		readingData.SetNull();
+
+		Document serializedDoc;
+		serializedDoc.CopyFrom(readingData, serializedDoc.GetAllocator());
+		StringBuffer buffer;
+		Writer<StringBuffer> writer(buffer);
+		serializedDoc.Accept(writer);
 
 		rwLock.lockWrite();
-		_readings.emplace_back(assetCode, userTs, formattedDate, std::move(readingData));
+		_readings.emplace_back(assetCode, userTs, formattedDate, buffer.GetString());
 		rwLock.unlockWrite();
+
 		updateAssetCount++;
 	}
 
@@ -255,7 +260,11 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 			tsValue.SetString(reading._ts.c_str(), static_cast<rapidjson::SizeType>(reading._ts.length()), allocator);
 			row.AddMember("ts", tsValue, allocator);
 
-			row.AddMember("reading", reading._json, allocator);
+			Document serializedDoc;
+			serializedDoc.Parse(reading._json.c_str());
+			Value readingCopy;
+			readingCopy.CopyFrom(serializedDoc, doc.GetAllocator());
+			row.AddMember("reading", readingCopy, allocator);
 
 			rows.PushBack(row, allocator);
 		}

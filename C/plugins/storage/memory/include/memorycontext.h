@@ -45,9 +45,9 @@ struct Reading {
     std::string _assetCode;
     std::string _userTs;
     std::string _ts;
-    rapidjson::Value _json;
+    std::string _json;
 
-    Reading(std::string assetCode, std::string userTs, std::string ts, rapidjson::Value json)
+    Reading(std::string assetCode, std::string userTs, std::string ts, std::string json)
         : _assetCode(std::move(assetCode)),
           _userTs(std::move(userTs)),
           _ts(std::move(ts)),
