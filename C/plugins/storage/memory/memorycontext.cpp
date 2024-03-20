@@ -178,14 +178,11 @@ int MemoryContext::addReading(const char* readings) {
 
 		Value& readingData = readingValue["reading"];
 
-		Document serializedDoc;
-		serializedDoc.CopyFrom(readingData, serializedDoc.GetAllocator());
-		StringBuffer buffer;
-		Writer<StringBuffer> writer(buffer);
-		serializedDoc.Accept(writer);
+		Value detachedReadingData;
+		detachedReadingData.CopyFrom(readingData, _document.GetAllocator());
 
 		rwLock.lockWrite();
-		_readings.emplace_back(assetCode, userTs, formattedDate, buffer.GetString());
+		_readings.emplace_back(assetCode, userTs, formattedDate, detachedReadingData);
 		rwLock.unlockWrite();
 
 		updateAssetCount++;
@@ -260,11 +257,9 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 			tsValue.SetString(reading._ts.c_str(), static_cast<rapidjson::SizeType>(reading._ts.length()), allocator);
 			row.AddMember("ts", tsValue, allocator);
 
-			Document serializedDoc;
-			serializedDoc.Parse(reading._json.c_str());
-			Value readingCopy;
-			readingCopy.CopyFrom(serializedDoc, doc.GetAllocator());
-			row.AddMember("reading", readingCopy, allocator);
+			Value readingData;
+			readingData.CopyFrom(reading._json, doc.GetAllocator());
+			row.AddMember("reading", readingData, allocator);
 
 			rows.PushBack(row, allocator);
 		}
