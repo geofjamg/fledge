@@ -87,15 +87,11 @@ char *plugin_reading_fetch(PLUGIN_HANDLE handle, unsigned long id, unsigned int 
 
 	auto context = static_cast<MemoryContext *>(handle);
 
-	Document doc = context->fetchReadings(id, blksize);
+	string json = context->fetchReadings(id, blksize);
 
-	StringBuffer buffer;
-	Writer<StringBuffer> writer(buffer);
-	doc.Accept(writer);
-	char* json = (char *) buffer.GetString();
+//	Logger::getLogger()->debug("MEMORY plugin_reading_fetch json %s", json.c_str());
 
-//	Logger::getLogger()->debug("MEMORY plugin_reading_fetch json %s", json);
-	return strdup(json);
+	return strdup(json.c_str());
 }
 
 /**

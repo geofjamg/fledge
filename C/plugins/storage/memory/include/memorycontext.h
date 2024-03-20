@@ -45,13 +45,13 @@ struct Reading {
     std::string _assetCode;
     std::string _userTs;
     std::string _ts;
-    rapidjson::Value _json;
+    std::string _json;
 
-    Reading(std::string assetCode, std::string userTs, std::string ts, rapidjson::Value& json)
+    Reading(std::string assetCode, std::string userTs, std::string ts, std::string json)
         : _assetCode(std::move(assetCode)),
           _userTs(std::move(userTs)),
-          _ts(std::move(ts)) {
-        _json = json;
+          _ts(std::move(ts)),
+          _json(std::move(json)) {
     }
 };
 
@@ -66,7 +66,7 @@ public:
                             unsigned long& readings, unsigned int& duration);
     void purgeReadingsByAge(unsigned long maxAge, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
                             unsigned long& readings, unsigned int& duration);
-    rapidjson::Document fetchReadings(unsigned long firstId, unsigned int blkSize);
+    std::string fetchReadings(unsigned long firstId, unsigned int blkSize);
     unsigned int getReadingCount() const { return _readings.size(); }
 
 private:

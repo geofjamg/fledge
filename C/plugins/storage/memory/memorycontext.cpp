@@ -178,11 +178,14 @@ int MemoryContext::addReading(const char* readings) {
 
 		Value& readingData = readingValue["reading"];
 
-		Value detachedReadingData;
-		detachedReadingData.CopyFrom(readingData, _document.GetAllocator());
+		Document serializedDoc;
+		serializedDoc.CopyFrom(readingData, serializedDoc.GetAllocator());
+		StringBuffer buffer;
+		Writer<StringBuffer> writer(buffer);
+		serializedDoc.Accept(writer);
 
 		rwLock.lockWrite();
-		_readings.emplace_back(assetCode, userTs, formattedDate, detachedReadingData);
+		_readings.emplace_back(assetCode, userTs, formattedDate, buffer.GetString());
 		rwLock.unlockWrite();
 
 		updateAssetCount++;
@@ -216,7 +219,7 @@ void MemoryContext::purgeReadingsByAge(unsigned long maxAge, unsigned long sent,
 
 
 // iDs seems to start at 1
-Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) {
+string MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) {
 	Document doc;
 	doc.SetObject();
 	Document::AllocatorType& allocator = doc.GetAllocator();
@@ -224,6 +227,7 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 	Value rows(kArrayType);
 
 	unsigned long fetch_count = 0;
+	ostringstream json;
 	rwLock.lockRead();
 	if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
 		unsigned long windowFirstId = firstId - _readingMinId - 1;
@@ -234,46 +238,30 @@ Document MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSiz
 
 		fetch_count = windowSize;
 
+		json << "{\"count\":" << fetch_count << ",\"rows\":[";
 		for (unsigned long i = windowFirstId; i < windowFirstId + windowSize; i++) {
 			Reading& reading = _readings[i];
 
-			Value row(kObjectType);
-
 			unsigned long id = firstId + i - windowFirstId;
-			row.AddMember("id", id, allocator);
+			json << "{\"id\":" << id
+				<< ",\"asset_code\":\"" << reading._assetCode << "\""
+				<< ",\"user_ts\":\"" << reading._userTs << "\""
+				<< ",\"ts\":\"" << reading._ts << "\""
+				<< ",\"reading\":" << reading._json << "}";
 
-			// Logger::getLogger()->debug("MEMORY plugin_reading_fetch id=%d, assetCode='%s', userTs='%s', ts='%s'",
-			// 	id, reading._assetCode.c_str(), reading._userTs.c_str(), reading._ts.c_str());
-
-			Value assetCodeValue(rapidjson::kStringType);
-			assetCodeValue.SetString(reading._assetCode.c_str(), static_cast<rapidjson::SizeType>(reading._assetCode.length()), allocator);
-			row.AddMember("asset_code", assetCodeValue, allocator);
-
-			Value userTsValue(rapidjson::kStringType);
-			userTsValue.SetString(reading._userTs.c_str(), static_cast<rapidjson::SizeType>(reading._userTs.length()), allocator);
-			row.AddMember("user_ts", userTsValue, allocator);
-
-			Value tsValue(rapidjson::kStringType);
-			tsValue.SetString(reading._ts.c_str(), static_cast<rapidjson::SizeType>(reading._ts.length()), allocator);
-			row.AddMember("ts", tsValue, allocator);
-
-			Value readingData;
-			readingData.CopyFrom(reading._json, doc.GetAllocator());
-			row.AddMember("reading", readingData, allocator);
-
-			rows.PushBack(row, allocator);
+			if (i < windowFirstId + windowSize - 1) {
+				json << ",";
+			}
 		}
+		json << "]}";
+	} else {
+		json << R"({"count":0,"rows":[]})";
 	}
 	rwLock.unlockRead();
 
-	Value count;
-	count.SetUint64(fetch_count);
 	if (fetch_count > 0) {
 		Logger::getLogger()->debug("%d readings has been fetched", fetch_count);
 	}
 
-	doc.AddMember("count", count, allocator)
-		.AddMember("rows", rows, allocator);
-
-	return doc;
+	return json.str();
 }
