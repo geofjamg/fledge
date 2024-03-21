@@ -220,10 +220,6 @@ void MemoryContext::purgeReadingsByAge(unsigned long maxAge, unsigned long sent,
 
 // iDs seems to start at 1
 char* MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) {
-	Document doc;
-	doc.SetObject();
-	Document::AllocatorType& allocator = doc.GetAllocator();
-
 	Value rows(kArrayType);
 
 	unsigned long fetch_count = 0;
