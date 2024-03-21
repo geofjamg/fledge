@@ -66,7 +66,7 @@ public:
                             unsigned long& readings, unsigned int& duration);
     void purgeReadingsByAge(unsigned long maxAge, unsigned long sent, unsigned long& removed, unsigned long& unsentPurged, unsigned long& unsentRetained,
                             unsigned long& readings, unsigned int& duration);
-    std::string fetchReadings(unsigned long firstId, unsigned int blkSize);
+    char* fetchReadings(unsigned long firstId, unsigned int blkSize);
     unsigned int getReadingCount() const { return _readings.size(); }
 
 private:

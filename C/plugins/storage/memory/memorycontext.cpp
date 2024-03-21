@@ -219,7 +219,7 @@ void MemoryContext::purgeReadingsByAge(unsigned long maxAge, unsigned long sent,
 
 
 // iDs seems to start at 1
-string MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) {
+char* MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) {
 	Document doc;
 	doc.SetObject();
 	Document::AllocatorType& allocator = doc.GetAllocator();
@@ -227,7 +227,7 @@ string MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize)
 	Value rows(kArrayType);
 
 	unsigned long fetch_count = 0;
-	ostringstream json;
+	string json;
 	rwLock.lockRead();
 	if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
 		unsigned long windowFirstId = firstId - _readingMinId - 1;
@@ -238,24 +238,25 @@ string MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize)
 
 		fetch_count = windowSize;
 
-		json << "{\"count\":" << fetch_count << ",\"rows\":[";
+		json = json.append("{\"count\":").append(std::to_string(fetch_count)).append(",\"rows\":[");
 		for (unsigned long i = windowFirstId; i < windowFirstId + windowSize; i++) {
 			Reading& reading = _readings[i];
 
 			unsigned long id = firstId + i - windowFirstId;
-			json << "{\"id\":" << id
-				<< ",\"asset_code\":\"" << reading._assetCode << "\""
-				<< ",\"user_ts\":\"" << reading._userTs << "\""
-				<< ",\"ts\":\"" << reading._ts << "\""
-				<< ",\"reading\":" << reading._json << "}";
+			json = json.append("{\"id\":").append(std::to_string(id))
+				.append(",\"asset_code\":\"").append(reading._assetCode)
+				.append("\",\"user_ts\":\"").append(reading._userTs)
+				.append("\",\"ts\":\"").append(reading._ts)
+				.append("\",\"reading\":").append(reading._json)
+				.append("}");
 
 			if (i < windowFirstId + windowSize - 1) {
-				json << ",";
+				json = json.append(",");
 			}
 		}
-		json << "]}";
+		json = json.append("]}");
 	} else {
-		json << R"({"count":0,"rows":[]})";
+		json = R"({"count":0,"rows":[]})";
 	}
 	rwLock.unlockRead();
 
@@ -263,5 +264,5 @@ string MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize)
 		Logger::getLogger()->debug("%d readings has been fetched", fetch_count);
 	}
 
-	return json.str();
+	return strdup(json.c_str());
 }
