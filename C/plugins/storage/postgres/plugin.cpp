@@ -143,7 +143,7 @@ std::string results;
 	{
 		return strdup(results.c_str());
 	}
-	Logger::getLogger()->info("plugin_common_insert end");
+	Logger::getLogger()->info("plugin_common_retrieve end");
 	return NULL;
 }
 
