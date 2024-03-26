@@ -94,7 +94,7 @@ bool	       daemonMode = true;
 string	       myName = SERVICE_NAME;
 bool           returnPlugin = false;
 bool           returnReadingsPlugin = false;
-string	       logLevel = "debug";
+string	       logLevel = "trace";
 
 	for (int i = 1; i < argc; i++)
 	{
