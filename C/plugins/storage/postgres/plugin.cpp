@@ -183,6 +183,8 @@ Connection        *connection = manager->allocate();
  */
 int plugin_common_delete(PLUGIN_HANDLE handle, char *schema , char *table, char *condition)
 {
+	Logger::getLogger()->info("plugin_common_delete %s %s %s", schema, table, condition);
+	auto start = high_resolution_clock::now();
 ConnectionManager *manager = (ConnectionManager *)handle;
 Connection        *connection = manager->allocate();
 
@@ -194,6 +196,9 @@ Connection        *connection = manager->allocate();
 
 	int result = connection->deleteRows(std::string(OR_DEFAULT_SCHEMA(schema)) + "." + std::string(table), std::string(condition));
 	manager->release(connection);
+	auto stop = high_resolution_clock::now();
+	auto duration = duration_cast<microseconds>(stop - start);
+	Logger::getLogger()->info("plugin_common_delete end %d", duration.count());
 	return result;
 }
 
