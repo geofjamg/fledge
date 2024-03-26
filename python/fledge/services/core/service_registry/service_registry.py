@@ -68,6 +68,7 @@ class ServiceRegistry:
 
     @classmethod
     def register(cls, name, s_type, address, port, management_port,  protocol='http', token=None):
+        print("AAA REGISTER " + name)
         """ registers the service instance
        
         :param name: name of the service
@@ -118,6 +119,8 @@ class ServiceRegistry:
         # Remove startup token
         if token is not None:
             cls._startupTokens.pop(name, None)
+
+        print("AAA FIN REGISTER " + name)
 
         # Success
         return service_id
