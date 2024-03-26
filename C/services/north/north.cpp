@@ -134,7 +134,7 @@ unsigned short	corePort = 8082;
 string		coreAddress = "localhost";
 bool		daemonMode = true;
 string		myName = SERVICE_NAME;
-string		logLevel = "warning";
+string		logLevel = "trace";
 string		token = "";
 bool		dryRun = false;
 
