@@ -31,7 +31,7 @@ async def run(category_name):
     Args:
         configuration_name (str): name of category that was changed
     """
-
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run " + category_name, flush=True)
     # get all interest records regarding category_name
     cfg_mgr = ConfigurationManager()
     interest_registry = InterestRegistry(cfg_mgr)
@@ -54,6 +54,8 @@ async def run(category_name):
             continue
         url = "{}://{}:{}/fledge/change".format(service_record._protocol, service_record._address, service_record._management_port)
 
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO record " + url, flush=True)
+
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.post(url, data=json.dumps(payload, sort_keys=True), headers=headers) as resp:
@@ -66,7 +68,7 @@ async def run(category_name):
             except Exception as ex:
                 _LOGGER.exception(ex, "Unable to notify microservice with uuid {}".format(i._microservice_uuid))
                 continue
-
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run end" + category_name, flush=True)
 
 async def run_child_create(parent_category_name, child_category_list):
     """ Call the child_create Management API
