@@ -13,7 +13,6 @@
 #include <logger.h>
 #include <time.h>
 #include <sstream>
-#include <fstream>
 
 using namespace std;
 using namespace rapidjson;
@@ -194,7 +193,6 @@ string responsePayload;
  */
 void ManagementApi::configChange(shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request)
 {
-	Logger::getLogger()->error("YOU configChange");
 ostringstream convert;
 string responsePayload;
 string payload;
@@ -202,11 +200,7 @@ string payload;
 	try
 	{	
 		payload = request->content.string();
-		Logger::getLogger()->error("YOU configChange2");
-		ofstream ofs("/tmp/a.log", std::ios_base::app);
-		ofs << payload;
 		ConfigCategoryChange conf(payload);
-		Logger::getLogger()->error("YOU configChange3");
 		ConfigHandler	*handler = ConfigHandler::getInstance(NULL);
 		handler->configChange(conf.getName(), conf.itemsToJSON(true));
 		convert << "{ \"message\" : \"Config change accepted\" }";
@@ -221,7 +215,6 @@ string payload;
 	}
 	
 	responsePayload = convert.str();
-	Logger::getLogger()->error("YOU configChange end");
 	respond(response, responsePayload);
 }
 

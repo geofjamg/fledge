@@ -55,9 +55,7 @@ ConfigHandler::configChange(const string& category, const string& config)
 		// we therefore need to guard against the map changing
 		m_change = false;
 		lck.unlock();
-		Logger::getLogger()->error("YOU handler avant");
 		it->second->configChange(category, config);
-		Logger::getLogger()->error("YOU handler apres");
 		lck.lock();
 		if (m_change) // Something changed
 		{
