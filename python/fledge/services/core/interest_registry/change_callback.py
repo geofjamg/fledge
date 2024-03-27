@@ -54,12 +54,17 @@ async def run(category_name):
             _LOGGER.exception("Unable to notify microservice with uuid %s as it is not found in the service registry", i._microservice_uuid)
             continue
         url = "{}://{}:{}/fledge/change".format(service_record._protocol, service_record._address, service_record._management_port)
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO record", flush=True)
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO record url" + url, flush=True)
+
+        data = json.dumps(payload, sort_keys=True)
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO record data", flush=True)
 
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.post(url, data=json.dumps(payload, sort_keys=True), headers=headers) as resp:
+                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run post before", flush=True)
+                async with session.post(url, data=data, headers=headers) as resp:
                     result = await resp.text()
+                    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run post after", flush=True)
                     status_code = resp.status
                     if status_code in range(400, 500):
                         _LOGGER.error("Bad request error code: %d, reason: %s", status_code, resp.reason)
