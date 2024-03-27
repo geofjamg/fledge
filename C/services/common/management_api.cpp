@@ -193,7 +193,7 @@ string responsePayload;
  */
 void ManagementApi::configChange(shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request)
 {
-	std::cout << "WIN" << std::end;
+	std::cout << "WIN" << std::endl;
 ostringstream convert;
 string responsePayload;
 string payload;
