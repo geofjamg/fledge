@@ -66,6 +66,7 @@ async def run(category_name):
                     result = await resp.text()
                     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run post after", flush=True)
                     status_code = resp.status
+                    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO status code", flush=True)
                     if status_code in range(400, 500):
                         _LOGGER.error("Bad request error code: %d, reason: %s", status_code, resp.reason)
                     if status_code in range(500, 600):
