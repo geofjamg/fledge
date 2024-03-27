@@ -176,7 +176,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
         callbacks = self._registered_interests.get(category_name)
         if callbacks is not None:
             for callback in callbacks:
-                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback" + str(callback), flush=True)
+                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback", flush=True)
                 try:
                     cb = import_module(callback)
                 except ImportError:
