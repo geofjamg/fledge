@@ -244,7 +244,7 @@ async def set_configuration_item(request):
         curl -X PUT -H "Content-Type: application/json" -d '{"displayName": "Age"}' http://localhost:8081/fledge/category/PURGE_READ/age
     """
     # Configure logging
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " set_configuration_item")
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " set_configuration_item", flush=True)
     category_name = request.match_info.get('category_name', None)
     config_item = request.match_info.get('config_item', None)
 
@@ -311,6 +311,8 @@ async def set_configuration_item(request):
         request.is_core_mgt
     except AttributeError:
         category_item = hide_password(category_item)
+
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " set_configuration_item end", flush=True)
 
     return web.json_response(category_item)
 

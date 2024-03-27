@@ -740,7 +740,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
         Returns:
             None
         """
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO update_configuration_item_bulk")
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO update_configuration_item_bulk", flush=True)
         try:
             payload = {"updates": []}
             audit_details = {'category': category_name, 'items': {}}
@@ -831,7 +831,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             audit = AuditLogger(self._storage)
             await audit.information('CONCH', audit_details)
 
-            print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO END update_configuration_item_bulk")
+            print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO END update_configuration_item_bulk", flush=True)
         except Exception as ex:
             _logger.exception(ex, 'Unable to bulk update config items')
             raise
@@ -1244,7 +1244,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
         Only default values can be entered for and item's entries.
         A "value" entry specified for an item will raise an exception.
         """
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " create category avant");
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " create category avant", flush=True);
         if not isinstance(category_name, str):
             raise TypeError('category_name must be a string')
 
@@ -1327,7 +1327,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             _logger.exception(
                 'Unable to run callbacks for category_name %s', category_name)
             raise
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " create category apres")
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " create category apres", flush=True)
         return None
 
     async def _read_all_child_category_names(self, category_name):
