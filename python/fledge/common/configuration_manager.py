@@ -842,6 +842,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             _logger.exception(
                 'Unable to run callbacks for category_name %s', category_name)
             raise
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO END2 update_configuration_item_bulk", flush=True)
 
     async def _handle_update_config_for_acl(self, category_name, old_value, new_val):
         """ Handles which function to call for acl usage table on the basis of old_value and
