@@ -13,6 +13,7 @@
 #include <logger.h>
 #include <time.h>
 #include <sstream>
+#include <fstream>
 
 using namespace std;
 using namespace rapidjson;
@@ -202,6 +203,8 @@ string payload;
 	{	
 		payload = request->content.string();
 		Logger::getLogger()->error("YOU configChange2");
+		ofstream ofs("/tmp/a.log", std::ios_base::app);
+		ofs << payload;
 		ConfigCategoryChange conf(payload);
 		Logger::getLogger()->error("YOU configChange3");
 		ConfigHandler	*handler = ConfigHandler::getInstance(NULL);
