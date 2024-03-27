@@ -193,7 +193,7 @@ string responsePayload;
  */
 void ManagementApi::configChange(shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request)
 {
-	std::cout << "WIN" << std::endl;
+	Logger::getLogger()->error("YOU configChange");
 ostringstream convert;
 string responsePayload;
 string payload;
@@ -216,6 +216,7 @@ string payload;
 	}
 	
 	responsePayload = convert.str();
+	Logger::getLogger()->error("YOU configChange end");
 	respond(response, responsePayload);
 }
 
