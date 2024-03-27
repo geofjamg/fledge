@@ -72,6 +72,7 @@ async def run(category_name):
                     if status_code in range(500, 600):
                         _LOGGER.error("Server error code: %d, reason: %s", status_code, resp.reason)
             except Exception as ex:
+                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO erro " + str(ex), flush=True)
                 _LOGGER.exception(ex, "Unable to notify microservice with uuid {}".format(i._microservice_uuid))
                 continue
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run end", flush=True)
