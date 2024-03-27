@@ -15,6 +15,7 @@ from fledge.services.core.service_registry import exceptions as service_registry
 from fledge.services.core.interest_registry.interest_registry import InterestRegistry
 from fledge.services.core.interest_registry import exceptions as interest_registry_exceptions
 from fledge.common import logger
+import datetime
 
 __copyright__ = "Copyright (c) 2017 OSIsoft, LLC"
 __license__ = "Apache 2.0"
