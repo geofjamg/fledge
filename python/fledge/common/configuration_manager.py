@@ -175,9 +175,8 @@ class ConfigurationManager(ConfigurationManagerSingleton):
         print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO _run_callbacks " + category_name, flush=True)
         callbacks = self._registered_interests.get(category_name)
         if callbacks is not None:
-            print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO length " + len(callbacks), flush=True)
             for callback in callbacks:
-                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback before", flush=True)
+ #               print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback before", flush=True)
                 try:
                     cb = import_module(callback)
                 except ImportError:
@@ -194,7 +193,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
                         'Callback module %s run method must be a coroutine function', callback)
                     raise AttributeError('Callback module {} run method must be a coroutine function'.format(callback))
                 await cb.run(category_name)
-                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback after", flush=True)
+#                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback after", flush=True)
         else:
             if category_name == "LOGGING":
                 from fledge.services.core import server
