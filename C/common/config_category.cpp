@@ -42,7 +42,9 @@ ConfigCategories::ConfigCategories()
 ConfigCategories::ConfigCategories(const std::string& json)
 {
 	Document doc;
+	Logger::getLogger()->error("YOU parse avant");
 	doc.Parse(json.c_str());
+	Logger::getLogger()->error("YOU parse apres");
 	if (doc.HasParseError())
 	{
 		Logger::getLogger()->error("Configuration parse error in %s: %s at %d, '%s'", json.c_str(),
@@ -71,6 +73,7 @@ ConfigCategories::ConfigCategories(const std::string& json)
 			throw new ConfigMalformed();
 		}
 	}
+	Logger::getLogger()->error("YOU parse fini");
 }
 
 /**
