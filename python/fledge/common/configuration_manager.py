@@ -16,6 +16,7 @@ import logging
 from math import *
 import collections
 import ast
+import datetime
 
 from fledge.common.storage_client.payload_builder import PayloadBuilder
 from fledge.common.storage_client.storage_client import StorageClientAsync
@@ -739,7 +740,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
         Returns:
             None
         """
-
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO update_configuration_item_bulk")
         try:
             payload = {"updates": []}
             audit_details = {'category': category_name, 'items': {}}
@@ -830,6 +831,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             audit = AuditLogger(self._storage)
             await audit.information('CONCH', audit_details)
 
+            print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO END update_configuration_item_bulk")
         except Exception as ex:
             _logger.exception(ex, 'Unable to bulk update config items')
             raise
@@ -1242,6 +1244,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
         Only default values can be entered for and item's entries.
         A "value" entry specified for an item will raise an exception.
         """
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " create category avant");
         if not isinstance(category_name, str):
             raise TypeError('category_name must be a string')
 
@@ -1324,6 +1327,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             _logger.exception(
                 'Unable to run callbacks for category_name %s', category_name)
             raise
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " create category apres")
         return None
 
     async def _read_all_child_category_names(self, category_name):
