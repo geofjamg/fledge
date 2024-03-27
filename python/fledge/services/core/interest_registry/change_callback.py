@@ -16,6 +16,7 @@ from fledge.services.core.interest_registry.interest_registry import InterestReg
 from fledge.services.core.interest_registry import exceptions as interest_registry_exceptions
 from fledge.common import logger
 import datetime
+import traceback
 
 __copyright__ = "Copyright (c) 2017 OSIsoft, LLC"
 __license__ = "Apache 2.0"
@@ -73,6 +74,7 @@ async def run(category_name):
                         _LOGGER.error("Server error code: %d, reason: %s", status_code, resp.reason)
             except Exception as ex:
                 print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO error " + repr(ex), flush=True)
+                traceback.print_exc()
                 _LOGGER.exception(ex, "Unable to notify microservice with uuid {}".format(i._microservice_uuid))
                 continue
     print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run end", flush=True)
