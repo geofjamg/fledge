@@ -201,7 +201,9 @@ string payload;
 	try
 	{	
 		payload = request->content.string();
+		Logger::getLogger()->error("YOU configChange2");
 		ConfigCategoryChange conf(payload);
+		Logger::getLogger()->error("YOU configChange3");
 		ConfigHandler	*handler = ConfigHandler::getInstance(NULL);
 		handler->configChange(conf.getName(), conf.itemsToJSON(true));
 		convert << "{ \"message\" : \"Config change accepted\" }";
