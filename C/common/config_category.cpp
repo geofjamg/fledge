@@ -1748,7 +1748,9 @@ string ConfigCategory::itemToJSON(const string& itemName) const
 ConfigCategoryChange::ConfigCategoryChange(const string& json)
 {
 	Document doc;
+	Logger::getLogger()->error("YOU parseeee avant");
 	doc.Parse(json.c_str());
+	Logger::getLogger()->error("YOU parseeee apres");
 	if (doc.HasParseError())
 	{
 		Logger::getLogger()->error("Configuration parse error in category change %s: %s at %d",
@@ -1776,14 +1778,16 @@ ConfigCategoryChange::ConfigCategoryChange(const string& json)
 			json.c_str());
 		throw new ConfigMalformed();
 	}
-
+	Logger::getLogger()->error("YOU outch1");
 	m_name = doc["category"].GetString();
 	const Value& items = doc["items"];
 	for (Value::ConstMemberIterator itr = items.MemberBegin(); itr != items.MemberEnd(); ++itr)
 	{
 		try
 		{
+			Logger::getLogger()->error("YOU outch2");
 			m_items.push_back(new CategoryItem(itr->name.GetString(), itr->value));
+			Logger::getLogger()->error("YOU outch3");
 		}
 		catch (exception* e)
 		{
