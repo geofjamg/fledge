@@ -172,9 +172,11 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             self._acl_handler = ACLManager(storage)
 
     async def _run_callbacks(self, category_name):
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO _run_callbacks " + category_name, flush=True)
         callbacks = self._registered_interests.get(category_name)
         if callbacks is not None:
             for callback in callbacks:
+                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback" + str(callback), flush=True)
                 try:
                     cb = import_module(callback)
                 except ImportError:
