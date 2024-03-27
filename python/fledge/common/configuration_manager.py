@@ -174,8 +174,8 @@ class ConfigurationManager(ConfigurationManagerSingleton):
     async def _run_callbacks(self, category_name):
         print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO _run_callbacks " + category_name, flush=True)
         callbacks = self._registered_interests.get(category_name)
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO length " + len(callbacks), flush=True)
         if callbacks is not None:
+            print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO length " + len(callbacks), flush=True)
             for callback in callbacks:
                 print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback before", flush=True)
                 try:
