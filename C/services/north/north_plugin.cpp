@@ -30,7 +30,6 @@ std::mutex mtx2;
  */
 NorthPlugin::NorthPlugin(PLUGIN_HANDLE handle, const ConfigCategory& category) : Plugin(handle)
 {
-	Logger::getLogger()->error("TOTO init before");
 	// Call the init method of the plugin
 	PLUGIN_HANDLE (*pluginInit)(const void *) = (PLUGIN_HANDLE (*)(const void *))
 					manager->resolveSymbol(handle, "plugin_init");
@@ -41,7 +40,6 @@ NorthPlugin::NorthPlugin(PLUGIN_HANDLE handle, const ConfigCategory& category) :
 		Logger::getLogger()->error("plugin_init returned NULL, cannot proceed");
 		throw new exception();
 	}
-	Logger::getLogger()->error("TOTO init after");
 
 	// Setup the function pointers to the plugin
   	pluginSendPtr = (uint32_t (*)(PLUGIN_HANDLE, const std::vector<Reading *>& readings))
@@ -79,14 +77,11 @@ NorthPlugin::~NorthPlugin()
  */
 void NorthPlugin::start()
 {
-	Logger::getLogger()->error("TOTO start");
-
 	// Check pluginStart function pointer exists
 	if (this->pluginStartPtr)
 	{
 		this->pluginStartPtr(m_instance);
 	}
-	Logger::getLogger()->error("TOTO start end");
 }
 
 /**
@@ -95,14 +90,11 @@ void NorthPlugin::start()
  */
 void NorthPlugin::startData(const string& storedData)
 {
-	Logger::getLogger()->error("TOTO startData");
-
 	// Ccheck pluginStartData function pointer exists
 	if (this->pluginStartDataPtr)
 	{
 		this->pluginStartDataPtr(m_instance, storedData);
 	}
-	Logger::getLogger()->error("TOTO startData end");
 }
 
 /**
@@ -130,7 +122,6 @@ uint32_t NorthPlugin::send(const vector<Reading *>& readings)
  */
 void NorthPlugin::reconfigure(const string& newConfig)
 {
-	Logger::getLogger()->error("TOTO reconfigure");
 	if (!pluginReconfigurePtr)
 	{
 		/*
