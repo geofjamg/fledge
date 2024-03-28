@@ -16,7 +16,6 @@ import logging
 from math import *
 import collections
 import ast
-import datetime
 
 from fledge.common.storage_client.payload_builder import PayloadBuilder
 from fledge.common.storage_client.storage_client import StorageClientAsync
@@ -172,11 +171,9 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             self._acl_handler = ACLManager(storage)
 
     async def _run_callbacks(self, category_name):
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO _run_callbacks " + category_name, flush=True)
         callbacks = self._registered_interests.get(category_name)
         if callbacks is not None:
             for callback in callbacks:
-                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback before " + str(callback), flush=True)
                 try:
                     cb = import_module(callback)
                 except ImportError:
@@ -192,9 +189,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
                     _logger.exception(
                         'Callback module %s run method must be a coroutine function', callback)
                     raise AttributeError('Callback module {} run method must be a coroutine function'.format(callback))
-                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback await", flush=True)
                 await cb.run(category_name)
-                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO callback after", flush=True)
         else:
             if category_name == "LOGGING":
                 from fledge.services.core import server
@@ -744,7 +739,7 @@ class ConfigurationManager(ConfigurationManagerSingleton):
         Returns:
             None
         """
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO update_configuration_item_bulk", flush=True)
+
         try:
             payload = {"updates": []}
             audit_details = {'category': category_name, 'items': {}}
@@ -835,7 +830,6 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             audit = AuditLogger(self._storage)
             await audit.information('CONCH', audit_details)
 
-            print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO END update_configuration_item_bulk", flush=True)
         except Exception as ex:
             _logger.exception(ex, 'Unable to bulk update config items')
             raise
@@ -846,7 +840,6 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             _logger.exception(
                 'Unable to run callbacks for category_name %s', category_name)
             raise
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO END2 update_configuration_item_bulk", flush=True)
 
     async def _handle_update_config_for_acl(self, category_name, old_value, new_val):
         """ Handles which function to call for acl usage table on the basis of old_value and
@@ -1249,7 +1242,6 @@ class ConfigurationManager(ConfigurationManagerSingleton):
         Only default values can be entered for and item's entries.
         A "value" entry specified for an item will raise an exception.
         """
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " create category avant", flush=True);
         if not isinstance(category_name, str):
             raise TypeError('category_name must be a string')
 
@@ -1332,7 +1324,6 @@ class ConfigurationManager(ConfigurationManagerSingleton):
             _logger.exception(
                 'Unable to run callbacks for category_name %s', category_name)
             raise
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " create category apres", flush=True)
         return None
 
     async def _read_all_child_category_names(self, category_name):
