@@ -24,7 +24,6 @@
 #include <plugin_exception.h>
 #include <config_category.h>
 
-using namespace std::chrono;
 using namespace std;
 using namespace rapidjson;
 
@@ -105,8 +104,6 @@ long poolSize = 5, maxReadingRows = 5000;
  */
 int plugin_common_insert(PLUGIN_HANDLE handle, char *schema, char *table, char *data)
 {
-	Logger::getLogger()->info("plugin_common_insert %s %s %s", schema, table, data);
-	auto start = high_resolution_clock::now();
 ConnectionManager *manager = (ConnectionManager *)handle;
 Connection        *connection = manager->allocate();
 
@@ -119,9 +116,6 @@ Connection        *connection = manager->allocate();
 
 	int result = connection->insert(std::string(OR_DEFAULT_SCHEMA(schema)) + "." + std::string(table), std::string(data));
 	manager->release(connection);
-	auto stop = high_resolution_clock::now();
-	auto duration = duration_cast<microseconds>(stop - start);
-	Logger::getLogger()->info("plugin_common_insert end %d", duration.count());
 	return result;
 }
 
@@ -130,8 +124,6 @@ Connection        *connection = manager->allocate();
  */
 const char *plugin_common_retrieve(PLUGIN_HANDLE handle, char *schema, char *table, char *query)
 {
-	Logger::getLogger()->info("plugin_common_retrieve %s %s %s", schema, table, query);
-	auto start = high_resolution_clock::now();
 ConnectionManager *manager = (ConnectionManager *)handle;
 Connection        *connection = manager->allocate();
 std::string results;
@@ -144,9 +136,6 @@ std::string results;
 
 	bool rval = connection->retrieve(schema, std::string(OR_DEFAULT_SCHEMA(schema)) + "." + std::string(table), std::string(query), results);
 	manager->release(connection);
-	auto stop = high_resolution_clock::now();
-	auto duration = duration_cast<microseconds>(stop - start);
-	Logger::getLogger()->info("plugin_common_retrieve end %d", duration.count());
 	if (rval)
 	{
 		return strdup(results.c_str());
@@ -159,9 +148,7 @@ std::string results;
  */
 int plugin_common_update(PLUGIN_HANDLE handle, char *schema, char *table, char *data)
 {
-	Logger::getLogger()->info("plugin_common_update %s %s %s", schema, table, data);
-	auto start = high_resolution_clock::now();
-	ConnectionManager *manager = (ConnectionManager *)handle;
+ConnectionManager *manager = (ConnectionManager *)handle;
 Connection        *connection = manager->allocate();
 
 	if (connection == NULL)
@@ -172,9 +159,6 @@ Connection        *connection = manager->allocate();
 
 	int result = connection->update(std::string(OR_DEFAULT_SCHEMA(schema)) + "." + std::string(table), std::string(data));
 	manager->release(connection);
-	auto stop = high_resolution_clock::now();
-	auto duration = duration_cast<microseconds>(stop - start);
-	Logger::getLogger()->info("plugin_common_update end %d", duration.count());
 	return result;
 }
 
@@ -183,8 +167,6 @@ Connection        *connection = manager->allocate();
  */
 int plugin_common_delete(PLUGIN_HANDLE handle, char *schema , char *table, char *condition)
 {
-	Logger::getLogger()->info("plugin_common_delete %s %s %s", schema, table, condition);
-	auto start = high_resolution_clock::now();
 ConnectionManager *manager = (ConnectionManager *)handle;
 Connection        *connection = manager->allocate();
 
@@ -196,9 +178,6 @@ Connection        *connection = manager->allocate();
 
 	int result = connection->deleteRows(std::string(OR_DEFAULT_SCHEMA(schema)) + "." + std::string(table), std::string(condition));
 	manager->release(connection);
-	auto stop = high_resolution_clock::now();
-	auto duration = duration_cast<microseconds>(stop - start);
-	Logger::getLogger()->info("plugin_common_delete end %d", duration.count());
 	return result;
 }
 
