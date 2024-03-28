@@ -27,7 +27,6 @@ class PluginDiscovery(object):
 
     @classmethod
     def get_plugins_installed(cls, plugin_type=None, is_config=False):
-        print("get_plugins_installed avant")
         if plugin_type is None:
             plugins_list = []
             plugins_list_north = cls.fetch_plugins_installed(plugin_type="north", installed_dir_name="north",
@@ -71,7 +70,6 @@ class PluginDiscovery(object):
                                                        installed_dir_name=installed_dir_name, is_config=is_config)
             plugins_list.extend(cls.fetch_c_plugins_installed(plugin_type=plugin_type, is_config=is_config,
                                                               installed_dir_name=installed_dir_name))
-        print("get_plugins_installed apres")
         return plugins_list
 
     @classmethod
