@@ -737,8 +737,10 @@ string	payload;
 		payload = request->content.string();
 
 		char *pluginResult = plugin->commonRetrieve(tableName, payload);
+
 		if (pluginResult)
 		{
+			Logger::getLogger()->error("TOTO commonQuery '%s' '%s' '%s'", tableName.c_str(), payload.c_str(), pluginResult);
 			string res = pluginResult;
 
 			respond(response, res);
@@ -746,6 +748,7 @@ string	payload;
 		}
 		else
 		{
+			Logger::getLogger()->error("TOTO commonQuery '%s' '%s'", tableName.c_str(), payload.c_str());
 			string responsePayload;
 			mapError(responsePayload, plugin->lastError());
 			respond(response, SimpleWeb::StatusCode::client_error_bad_request, responsePayload);
