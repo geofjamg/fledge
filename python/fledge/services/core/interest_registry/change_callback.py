@@ -15,8 +15,6 @@ from fledge.services.core.service_registry import exceptions as service_registry
 from fledge.services.core.interest_registry.interest_registry import InterestRegistry
 from fledge.services.core.interest_registry import exceptions as interest_registry_exceptions
 from fledge.common import logger
-import datetime
-import traceback
 
 __copyright__ = "Copyright (c) 2017 OSIsoft, LLC"
 __license__ = "Apache 2.0"
@@ -33,7 +31,7 @@ async def run(category_name):
     Args:
         configuration_name (str): name of category that was changed
     """
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run ", flush=True)
+
     # get all interest records regarding category_name
     cfg_mgr = ConfigurationManager()
     interest_registry = InterestRegistry(cfg_mgr)
@@ -55,29 +53,19 @@ async def run(category_name):
             _LOGGER.exception("Unable to notify microservice with uuid %s as it is not found in the service registry", i._microservice_uuid)
             continue
         url = "{}://{}:{}/fledge/change".format(service_record._protocol, service_record._address, service_record._management_port)
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO record url" + url + " " + service_record._type, flush=True)
-
-        data = json.dumps(payload, sort_keys=True)
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO record data", flush=True)
 
         async with aiohttp.ClientSession() as session:
             try:
-                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run post before", flush=True)
-                async with session.post(url, data=data, headers=headers) as resp:
+                async with session.post(url, data=json.dumps(payload, sort_keys=True), headers=headers) as resp:
                     result = await resp.text()
-                    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run post after", flush=True)
                     status_code = resp.status
-                    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO status code " + str(status_code), flush=True)
                     if status_code in range(400, 500):
                         _LOGGER.error("Bad request error code: %d, reason: %s", status_code, resp.reason)
                     if status_code in range(500, 600):
                         _LOGGER.error("Server error code: %d, reason: %s", status_code, resp.reason)
             except Exception as ex:
-                print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO error " + repr(ex), flush=True)
-                traceback.print_exc()
                 _LOGGER.exception(ex, "Unable to notify microservice with uuid {}".format(i._microservice_uuid))
                 continue
-    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " TOTO run end", flush=True)
 
 
 async def run_child_create(parent_category_name, child_category_list):
