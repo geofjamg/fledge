@@ -112,7 +112,10 @@ void defaultWrapper(shared_ptr<HttpServer::Response> response, shared_ptr<HttpSe
  * Called when an error occurs
  */
 void on_error(__attribute__((unused)) shared_ptr<HttpServer::Request> request, __attribute__((unused)) const SimpleWeb::error_code &ec) {
-	Logger::getLogger()->error("Storage HTTP server error: '%s'", ec.message().c_str());
+	if (ec.failed())
+	{
+		Logger::getLogger()->error("Storage HTTP server error: '%s'", ec.message().c_str());
+	}
 }
 
 /**
