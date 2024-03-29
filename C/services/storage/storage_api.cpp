@@ -112,6 +112,7 @@ void defaultWrapper(shared_ptr<HttpServer::Response> response, shared_ptr<HttpSe
  * Called when an error occurs
  */
 void on_error(__attribute__((unused)) shared_ptr<HttpServer::Request> request, __attribute__((unused)) const SimpleWeb::error_code &ec) {
+	Logger::getLogger()->error("TOTO Error web storage server %d '%s'", ec.failed(), ec.message().c_str());
 }
 
 /**
@@ -737,10 +738,8 @@ string	payload;
 		payload = request->content.string();
 
 		char *pluginResult = plugin->commonRetrieve(tableName, payload);
-
 		if (pluginResult)
 		{
-			Logger::getLogger()->error("TOTO commonQuery '%s' '%s' '%s'", tableName.c_str(), payload.c_str(), pluginResult);
 			string res = pluginResult;
 
 			respond(response, res);
@@ -748,7 +747,6 @@ string	payload;
 		}
 		else
 		{
-			Logger::getLogger()->error("TOTO commonQuery '%s' '%s'", tableName.c_str(), payload.c_str());
 			string responsePayload;
 			mapError(responsePayload, plugin->lastError());
 			respond(response, SimpleWeb::StatusCode::client_error_bad_request, responsePayload);
