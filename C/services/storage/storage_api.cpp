@@ -396,6 +396,7 @@ StorageApi::StorageApi(const unsigned short port, const unsigned int threads) : 
 	m_threads = threads;
 	m_server = new HttpServer();
 	m_server->config.port = port;
+	m_server->config.timeout_request = 300;
 	m_server->config.thread_pool_size = threads;
 	StorageApi::m_instance = this;
 }
