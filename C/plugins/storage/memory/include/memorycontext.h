@@ -6,6 +6,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <memory>
 
 // C++11 does not have a read write lock and boost shared_mutex does not work
 class ReaderWriterLock {
@@ -72,7 +73,7 @@ public:
 private:
     ReaderWriterLock rwLock;
     unsigned long _readingMinId;
-    std::vector<Reading> _readings;
+    std::vector<std::shared_ptr<Reading>> _readings;
     rapidjson::Document _document;
 };
 

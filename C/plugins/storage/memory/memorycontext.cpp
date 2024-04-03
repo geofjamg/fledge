@@ -184,8 +184,10 @@ int MemoryContext::addReading(const char* readings) {
 		Writer<StringBuffer> writer(buffer);
 		serializedDoc.Accept(writer);
 
+        auto reading = std::make_shared<Reading>(assetCode, userTs, formattedDate, buffer.GetString());
+
 		rwLock.lockWrite();
-		_readings.emplace_back(assetCode, userTs, formattedDate, buffer.GetString());
+		_readings.emplace_back(reading);
 		rwLock.unlockWrite();
 
 		updateAssetCount++;
@@ -220,44 +222,48 @@ void MemoryContext::purgeReadingsByAge(unsigned long maxAge, unsigned long sent,
 
 // iDs seems to start at 1
 char* MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) {
-	Value rows(kArrayType);
+    std::vector<shared_ptr<Reading>> windowReadings;
+    windowReadings.reserve(blkSize);
+    unsigned long windowFirstId = -1;
+    unsigned long windowSize = 0;
 
-	unsigned long fetch_count = 0;
-	string json;
-	rwLock.lockRead();
-	if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
-		unsigned long windowFirstId = firstId - _readingMinId - 1;
-		unsigned long windowSize = std::min(_readings.size() - windowFirstId, (unsigned long) blkSize);
+    // copy readings as fast as possible to avoid locking to much time
+    rwLock.lockRead();
+    if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
+        windowFirstId = firstId - _readingMinId - 1;
+        windowSize = std::min(_readings.size() - windowFirstId, (unsigned long) blkSize);
+        // Logger::getLogger()->debug("MEMORY plugin_reading_fetch firstId= %d, blksize=%d, readingsCount=%d, windowFirstId=%d, windowSize=%d",
+        // 	firstId, blkSize, _readings.size(), windowFirstId, windowSize);
+        for (unsigned long i = windowFirstId; i < windowFirstId + windowSize; i++) {
+            windowReadings.push_back(_readings[i]);
+        }
+    }
+    rwLock.unlockRead();
 
-		// Logger::getLogger()->debug("MEMORY plugin_reading_fetch firstId= %d, blksize=%d, readingsCount=%d, windowFirstId=%d, windowSize=%d",
-		// 	firstId, blkSize, _readings.size(), windowFirstId, windowSize);
+    string json;
+    if (windowReadings.empty()) {
+        json = R"({"count":0,"rows":[]})";
+    } else {
+        for (int i = 0; i < windowReadings.size(); i++) {
+            auto reading = windowReadings[i];
+            json = json.append("{\"count\":").append(std::to_string(windowReadings.size())).append(",\"rows\":[");
+            unsigned long id = firstId + i - windowFirstId;
+            json = json.append("{\"id\":").append(std::to_string(id))
+                    .append(",\"asset_code\":\"").append(reading->_assetCode)
+                    .append("\",\"user_ts\":\"").append(reading->_userTs)
+                    .append("\",\"ts\":\"").append(reading->_ts)
+                    .append("\",\"reading\":").append(reading->_json)
+                    .append("}");
 
-		fetch_count = windowSize;
+            if (i < windowFirstId + windowSize - 1) {
+                json = json.append(",");
+            }
+        }
+        json = json.append("]}");
+    }
 
-		json = json.append("{\"count\":").append(std::to_string(fetch_count)).append(",\"rows\":[");
-		for (unsigned long i = windowFirstId; i < windowFirstId + windowSize; i++) {
-			Reading& reading = _readings[i];
-
-			unsigned long id = firstId + i - windowFirstId;
-			json = json.append("{\"id\":").append(std::to_string(id))
-				.append(",\"asset_code\":\"").append(reading._assetCode)
-				.append("\",\"user_ts\":\"").append(reading._userTs)
-				.append("\",\"ts\":\"").append(reading._ts)
-				.append("\",\"reading\":").append(reading._json)
-				.append("}");
-
-			if (i < windowFirstId + windowSize - 1) {
-				json = json.append(",");
-			}
-		}
-		json = json.append("]}");
-	} else {
-		json = R"({"count":0,"rows":[]})";
-	}
-	rwLock.unlockRead();
-
-	if (fetch_count > 0) {
-		Logger::getLogger()->debug("%d readings has been fetched", fetch_count);
+	if (!windowReadings.empty()) {
+		Logger::getLogger()->debug("%d readings has been fetched", windowReadings.size());
 	}
 
 	return strdup(json.c_str());
