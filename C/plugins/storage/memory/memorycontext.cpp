@@ -224,14 +224,12 @@ void MemoryContext::purgeReadingsByAge(unsigned long maxAge, unsigned long sent,
 char* MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) {
     std::vector<shared_ptr<Reading>> windowReadings;
     windowReadings.reserve(blkSize);
-    unsigned long windowFirstId = -1;
-    unsigned long windowSize = 0;
 
-    // copy readings as fast as possible to avoid locking to much time
+    // copy readings as fast as possible to avoid locking too much time
     rwLock.lockRead();
     if (firstId >= _readingMinId + 1 && firstId <= _readingMinId + _readings.size()) {
-        windowFirstId = firstId - _readingMinId - 1;
-        windowSize = std::min(_readings.size() - windowFirstId, (unsigned long) blkSize);
+        unsigned long windowFirstId = firstId - _readingMinId - 1;
+        unsigned long windowSize = std::min(_readings.size() - windowFirstId, (unsigned long) blkSize);
         // Logger::getLogger()->debug("MEMORY plugin_reading_fetch firstId= %d, blksize=%d, readingsCount=%d, windowFirstId=%d, windowSize=%d",
         // 	firstId, blkSize, _readings.size(), windowFirstId, windowSize);
         for (unsigned long i = windowFirstId; i < windowFirstId + windowSize; i++) {
@@ -247,7 +245,7 @@ char* MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) 
         for (int i = 0; i < windowReadings.size(); i++) {
             auto reading = windowReadings[i];
             json = json.append("{\"count\":").append(std::to_string(windowReadings.size())).append(",\"rows\":[");
-            unsigned long id = firstId + i - windowFirstId;
+            unsigned long id = firstId + i;
             json = json.append("{\"id\":").append(std::to_string(id))
                     .append(",\"asset_code\":\"").append(reading->_assetCode)
                     .append("\",\"user_ts\":\"").append(reading->_userTs)
@@ -255,7 +253,7 @@ char* MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) 
                     .append("\",\"reading\":").append(reading->_json)
                     .append("}");
 
-            if (i < windowFirstId + windowSize - 1) {
+            if (i < windowReadings.size() - 1) {
                 json = json.append(",");
             }
         }
@@ -263,7 +261,7 @@ char* MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) 
     }
 
 	if (!windowReadings.empty()) {
-		Logger::getLogger()->debug("%d readings has been fetched", windowReadings.size());
+		Logger::getLogger()->debug("%d readings have been fetched", windowReadings.size());
 	}
 
 	return strdup(json.c_str());
