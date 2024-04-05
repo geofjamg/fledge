@@ -242,9 +242,9 @@ char* MemoryContext::fetchReadings(unsigned long firstId, unsigned int blkSize) 
     if (windowReadings.empty()) {
         json = R"({"count":0,"rows":[]})";
     } else {
+        json = json.append("{\"count\":").append(std::to_string(windowReadings.size())).append(",\"rows\":[");
         for (int i = 0; i < windowReadings.size(); i++) {
             auto reading = windowReadings[i];
-            json = json.append("{\"count\":").append(std::to_string(windowReadings.size())).append(",\"rows\":[");
             unsigned long id = firstId + i;
             json = json.append("{\"id\":").append(std::to_string(id))
                     .append(",\"asset_code\":\"").append(reading->_assetCode)
